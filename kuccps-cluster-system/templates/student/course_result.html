@@ -1,0 +1,54 @@
+<h2>{{ course }}</h2>
+
+<p><strong>Cluster:</strong> {{ cluster }}</p>
+<p><strong>Cluster Points:</strong> {{ points }}</p>
+
+<hr>
+
+{% if subject_check.passed %}
+    <h3>✅ Subject Requirements Met</h3>
+
+    <h4>Qualified Universities</h4>
+    {% if qualified %}
+        <ul>
+        {% for u, c in qualified %}
+            <li>{{ u }} (Cutoff: {{ c }})</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>❌ No university qualified</p>
+    {% endif %}
+
+    <h4>Not Qualified Universities</h4>
+    {% if not_qualified %}
+        <ul>
+        {% for u, c in not_qualified %}
+            <li>{{ u }} (Cutoff: {{ c }})</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>All universities qualified 🎉</p>
+    {% endif %}
+
+{% else %}
+    <h3>❌ Subject Requirements Not Met</h3>
+    <ul>
+    {% for f in subject_check.failed %}
+        <li>
+            {{ f.subject }} required ≥ {{ f.required }}
+            {% if f.student_subject %}
+                (you had {{ f.student_subject }}: {{ f.student_grade }})
+            {% else %}
+                (subject not done)
+            {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+{% endif %}
+
+<hr>
+
+<div style="margin-top:20px;">
+    <a href="/results" style="margin-right:15px;">🔙 Back to Results</a>
+    <a href="/">🏠 Back Home</a>
+</div>

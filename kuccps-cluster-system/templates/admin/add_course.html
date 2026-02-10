@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Course</title>
+</head>
+<body>
+
+<h2>Add Course</h2>
+
+<form method="post" action="/admin/add-course">
+
+    <!-- COURSE NAME -->
+    <label>Course Name</label><br>
+    <input name="name" required><br><br>
+
+    <!-- CLUSTER -->
+    <label>Cluster Number (1–20)</label><br>
+    <input name="cluster" type="number" min="1" max="20" required><br><br>
+
+    <hr>
+
+    <!-- SUBJECT REQUIREMENTS -->
+    <h3>Minimum Subject Requirements</h3>
+
+    <p>
+        <b>Enter one requirement per line</b><br><br>
+
+        Format:<br>
+        <b>Subject: Grade</b><br>
+        OR<br>
+        <b>Subject1/Subject2: Grade</b><br><br>
+
+        Examples:<br>
+        English/Kiswahili: C+<br>
+        Mathematics: B<br>
+        Biology: B<br>
+        Chemistry: B<br>
+        Physics: B<br><br>
+
+        <b>Allowed Grades:</b><br>
+        A, A-, B+, B, B-, C+, C, C-, D+, D, D-, E
+    </p>
+
+    <textarea name="requirements" rows="10" cols="60"
+placeholder="English/Kiswahili: C+
+Mathematics: B
+Biology: B
+Chemistry: B
+Physics: B"></textarea>
+
+    <br><br>
+    <hr>
+
+    <!-- UNIVERSITIES -->
+    <h3>Universities & Cutoff Points</h3>
+
+    <p>
+        Enter universities and cutoff points in the <b>same order</b><br>
+        (Line 1 university = Line 1 cutoff)
+    </p>
+
+    <label>Universities (one per line)</label><br>
+    <textarea name="universities" rows="6" cols="50"
+placeholder="University of Nairobi
+Moi University
+Kenyatta University"></textarea>
+
+    <br><br>
+
+    <label>Cutoff Points (one per line)</label><br>
+    <textarea name="cutoffs" rows="6" cols="20"
+placeholder="41.091
+39.500
+38.200"></textarea>
+
+    <br><br>
+
+    <button type="submit">➕ Add Course</button>
+
+</form>
+
+<hr>
+
+<a href="/admin/dashboard">⬅ Back to Dashboard</a> |
+<a href="/admin/courses">📚 View All Courses</a>
+
+</body>
+</html>

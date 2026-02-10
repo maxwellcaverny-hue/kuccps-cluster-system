@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+            vertical-align: top;
+            text-align: left;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 6px;
+        }
+
+        button {
+            padding: 8px 14px;
+            cursor: pointer;
+        }
+
+        .danger {
+            background: #c0392b;
+            color: #fff;
+            border: none;
+        }
+
+        .danger:hover {
+            background: #a93226;
+        }
+
+        hr {
+            margin: 25px 0;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Admin Dashboard</h2>
+<a href="/logout">Logout</a>
+
+<hr>
+
+<h3>Add Course</h3>
+
+<form method="post" action="/admin/add-course">
+
+    <label><strong>Cluster (1–20)</strong></label><br>
+    <select name="cluster" required>
+        {% for i in range(1, 21) %}
+            <option value="{{ i }}">Cluster {{ i }}</option>
+        {% endfor %}
+    </select>
+
+    <br><br>
+
+    <table>
+        <tr>
+            <th>Course Name</th>
+            <th>
+                Subject Requirements<br>
+                <small>One per line / OR using |</small>
+            </th>
+            <th>
+                Universities<br>
+                <small>One per line</small>
+            </th>
+            <th>
+                Cut-off Points<br>
+                <small>Same order</small>
+            </th>
+        </tr>
+
+        <tr>
+            <td>
+                <input type="text" name="name"
+                       placeholder="e.g Bachelor of Medicine" required>
+            </td>
+
+            <td>
+                <textarea name="requirements"
+placeholder="English: C+
+Mathematics: B
+Chemistry: B
+Biology: B-
+Physics: C+"></textarea>
+            </td>
+
+            <td>
+                <textarea name="universities"
+placeholder="University of Nairobi
+Kenyatta University
+Moi University"></textarea>
+            </td>
+
+            <td>
+                <textarea name="cutoffs"
+placeholder="44.467
+44.904
+43.200"></textarea>
+            </td>
+        </tr>
+    </table>
+
+    <br>
+    <button type="submit">Add Course</button>
+</form>
+
+<hr>
+
+<h3>Existing Courses</h3>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Course</th>
+        <th>Requirements</th>
+        <th>Universities</th>
+        <th>Cut-offs</th>
+        <th>Action</th>
+    </tr>
+
+    {% for cluster, course_list in courses.items() %}
+        {% for c in course_list %}
+        <tr>
+            <td>{{ c.id }}</td>
+
+            <td>
+                {{ c.name }}<br>
+                <small>Cluster {{ cluster }}</small>
+            </td>
+
+            <td>
+                {% for s, g in c.requirements.items() %}
+                    {{ s }} ≥ {{ g }}<br>
+                {% endfor %}
+            </td>
+
+            <td>
+                {% for u in c.universities %}
+                    {{ u.name }}<br>
+                {% endfor %}
+            </td>
+
+            <td>
+                {% for u in c.universities %}
+                    {{ u.cutoff }}<br>
+                {% endfor %}
+            </td>
+
+            <td>
+                <!-- ✏ EDIT -->
+                <a href="/admin/edit/{{ c.id }}">✏ Edit</a>
+                <br><br>
+
+                <!-- 🗑 DELETE -->
+                <form method="post"
+                      action="/admin/course/delete/{{ c.id }}"
+                      onsubmit="return confirm('Delete this course permanently?');">
+                    <button class="danger" type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    {% endfor %}
+</table>
+
+</body>
+</html>

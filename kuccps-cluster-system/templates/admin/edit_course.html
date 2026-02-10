@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Course</title>
+</head>
+<body>
+
+<h2>Edit Course</h2>
+
+<form method="post">
+
+    <label>Course Name</label><br>
+    <input name="name" value="{{ course.name }}" required><br><br>
+
+    <label>Cluster</label><br>
+    <input name="cluster" type="number" min="1" max="20"
+           value="{{ course.cluster }}" required><br><br>
+
+    <label>Universities (one per line)</label><br>
+    <textarea name="universities" rows="6" cols="60">{{ course.universities }}</textarea><br><br>
+
+    <label>Cut-off Points (same order)</label><br>
+    <textarea name="cutoffs" rows="6" cols="60">{{ course.cutoffs }}</textarea><br><br>
+
+    <label>Subject Requirements</label><br>
+    <textarea name="requirements" rows="10" cols="60">{{ course.requirements }}</textarea><br><br>
+
+    <button type="submit">💾 Save Changes</button>
+</form>
+
+<br>
+<a href="/admin/dashboard">⬅ Back to Dashboard</a>
+
+</body>
+</html>
