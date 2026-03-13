@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Waiting for Payment</title>
+
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            text-align:center;
+            margin-top:80px;
+        }
+
+        #status{
+            margin-top:20px;
+            font-size:20px;
+            font-weight:bold;
+        }
+
+        .loader{
+            border:6px solid #f3f3f3;
+            border-top:6px solid #4CAF50;
+            border-radius:50%;
+            width:40px;
+            height:40px;
+            animation: spin 1s linear infinite;
+            margin:20px auto;
+        }
+
+        @keyframes spin{
+            0%{transform:rotate(0deg);}
+            100%{transform:rotate(360deg);}
+        }
+    </style>
+
+</head>
+
+<body>
+
+<h2>Waiting for Payment Confirmation...</h2>
+
+<p>
+Please check your phone and enter your <b>M-Pesa PIN</b> to complete the payment.
+</p>
+
+<div class="loader"></div>
+
+<div id="status">
+Status: Waiting for payment...
+</div>
+
+<script>
+
+async function checkPayment(){
+
+    try{
+
+        const response = await fetch("/check-payment");
+        const data = await response.json();
+
+        document.getElementById("status").innerText =
+            "Status: " + data.status;
+
+        if(data.status === "paid"){
+
+            document.getElementById("status").innerText =
+                "Payment received! Redirecting...";
+
+            setTimeout(()=>{
+                window.location.href = "/cluster";
+            },2000);
+        }
+
+    }catch(error){
+        console.log("Payment check failed:", error);
+    }
+
+}
+
+setInterval(checkPayment, 5000);
+
+</script>
+
+</body>
+</html>

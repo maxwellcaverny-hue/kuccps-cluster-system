@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment</title>
+</head>
+<body>
+
+<h2>Pay to Continue</h2>
+
+<p>Please enter your M-Pesa phone number to complete payment.</p>
+
+<form method="POST" action="/stk_push">
+
+    <label for="phone">Phone Number (07XXXXXXXX):</label><br><br>
+
+    <input 
+        type="tel"
+        id="phone"
+        name="phone"
+        placeholder="07XXXXXXXX"
+        pattern="07[0-9]{8}"
+        required
+    >
+
+    <br><br>
+
+    <button type="submit">
+        Pay KES 150
+    </button>
+
+</form>
+
+</body>
+</html>

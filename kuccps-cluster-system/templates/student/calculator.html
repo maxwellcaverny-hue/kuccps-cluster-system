@@ -1,186 +1,352 @@
-<h2>KUCCPS Cluster Points Calculator</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Early Bird Cluster Calculator</title>
+<style>
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    background: linear-gradient(135deg, #e6f0ff, #ffffff);
+}
 
-<form action="/calculate" method="post">
+/* Navbar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background: #003366;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.navbar h2 { margin: 0; }
+.navbar a {
+    text-decoration: none;
+    margin-left: 20px;
+    color: #ff4d4d;
+    font-weight: bold;
+    cursor: pointer;
+}
+.navbar a:hover { text-decoration: underline; }
 
-<!-- ================= GROUP I ================= -->
+/* Main Container */
+.container {
+    max-width: 900px;
+    margin: 60px auto;
+    background: white;
+    padding: 50px;
+    border-radius: 20px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+}
 
-<h3>Group I</h3>
+/* Home Section */
+.home-section h1 { margin-bottom: 15px; color: #003366; font-size: 2rem; }
+.home-section p { color: #333; font-size: 1rem; }
+.access-box { display: flex; gap: 10px; margin-top: 20px; }
+.access-box input {
+    flex: 1; padding: 12px; border-radius: 10px; border: 2px solid #003366; font-size: 1rem;
+}
+.access-box button {
+    background: #ff4d4d; color: white; border: none; padding: 12px 25px; border-radius: 10px;
+    cursor: pointer; font-weight: bold; transition: background 0.3s ease;
+}
+.access-box button:hover { background: #cc0000; }
 
-English:
-<select name="English" required>
-<option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+/* Calculator Section */
+.calculator-section { display: none; }
+.group { margin-top: 20px; border: 1px solid #003366; border-radius: 10px; padding: 15px; }
+.group-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.group-header h3 { margin: 0; color: #003366; }
+.group-header button {
+    background: #ff4d4d; color: white; border: none; border-radius: 8px;
+    padding: 6px 12px; cursor: pointer; font-size: 0.9rem;
+}
+.group-header button:hover { background: #cc0000; }
+.group-content { display: none; margin-top: 10px; }
 
-Kiswahili:
-<select name="Kiswahili" required>
-<option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+/* Email Box in Calculator */
+.email-box {
+    margin-top: 30px; padding: 20px; background: #e6f0ff; border-radius: 15px;
+}
+.email-box input {
+    width: 100%; padding: 12px; margin-top: 10px; border-radius: 10px; border: 1px solid #003366; font-size: 1rem;
+}
+.email-box button {
+    background: #003366; color: white; border: none; padding: 14px 30px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 15px;
+}
+.email-box button:hover { background: #001f4d; }
 
-Mathematics:
-<select name="Mathematics" required>
-<option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select>
+/* Submit Button */
+button[type="submit"] {
+    background: #003366; color: white; border: none; padding: 14px 30px;
+    border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 20px;
+}
+button[type="submit"]:hover { background: #001f4d; }
 
-<!-- ================= GROUP II ================= -->
+/* Responsive */
+@media (max-width: 600px) {
+    .container { margin: 30px 15px; padding: 30px; }
+    .access-box { flex-direction: column; }
+    .access-box button { width: 100%; }
+}
+</style>
+</head>
+<body>
 
-<h3>Group II (Sciences)</h3>
+<!-- Navbar -->
+<div class="navbar">
+    <h2>Cluster Calculation</h2>
+    <div>
+        <a onclick="showHome()">Home</a>
+        <a onclick="showCalculator()">Calculator</a>
+        <!-- Admin login link removed for security -->
+    </div>
+</div>
 
-Biology:
-<select name="Biology"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+<div class="container">
 
-Chemistry:
-<select name="Chemistry"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+    <!-- Home Section -->
+    <div class="home-section" id="home-section">
+        <h1>Welcome to Early Bird Cluster Calculator & Course Finder</h1>
+        <p>Calculate your KUCCPS cluster points and discover courses you qualify for. Start a new calculation below or continue with your access code.</p>
+        <div class="access-box">
+            <input type="text" id="access-code" placeholder="Enter Access Code e.g. 8F3KQ2P9">
+            <button onclick="checkAccess()">Open</button>
+        </div>
+    </div>
 
-Physics:
-<select name="Physics"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+    <!-- Calculator Section -->
+    <div class="calculator-section" id="calculator">
+        <form action="/calculate" method="post">
+        <h2>Cluster Groups</h2>
 
-General Science:
-<select name="General Science"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+        <!-- GROUP I -->
+        <div class="group">
+            <div class="group-header">
+                <h3>Group I</h3>
+                <button type="button" onclick="toggleGroup(this)">Show</button>
+            </div>
+            <div class="group-content">
+                English:
+                <select name="English" required>
+                    <option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Kiswahili:
+                <select name="Kiswahili" required>
+                    <option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Mathematics:
+                <select name="Mathematics" required>
+                    <option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select>
+            </div>
+        </div>
 
-Biology for the Blind:
-<select name="Biology for the Blind"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select>
+        <!-- GROUP II -->
+        <div class="group">
+            <div class="group-header">
+                <h3>Group II (Sciences)</h3>
+                <button type="button" onclick="toggleGroup(this)">Show</button>
+            </div>
+            <div class="group-content">
+                Biology:
+                <select name="Biology"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Chemistry:
+                <select name="Chemistry"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Physics:
+                <select name="Physics"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                General Science:
+                <select name="GeneralScience"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Biology for the Blind:
+                <select name="BiologyBlind"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select>
+            </div>
+        </div>
 
-<!-- ================= GROUP III ================= -->
+        <!-- GROUP III -->
+        <div class="group">
+            <div class="group-header">
+                <h3>Group III (Humanities)</h3>
+                <button type="button" onclick="toggleGroup(this)">Show</button>
+            </div>
+            <div class="group-content">
+                History:
+                <select name="History"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Geography:
+                <select name="Geography"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                CRE:
+                <select name="CRE"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                IRE:
+                <select name="IRE"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                HRE:
+                <select name="HRE"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select>
+            </div>
+        </div>
 
-<h3>Group III (Humanities)</h3>
+        <!-- GROUP IV -->
+        <div class="group">
+            <div class="group-header">
+                <h3>Group IV (Technical)</h3>
+                <button type="button" onclick="toggleGroup(this)">Show</button>
+            </div>
+            <div class="group-content">
+                Computer Studies:
+                <select name="ComputerStudies"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Agriculture:
+                <select name="Agriculture"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Art & Design:
+                <select name="ArtDesign"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Home Science:
+                <select name="HomeScience"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select>
+            </div>
+        </div>
 
-History:
-<select name="History"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+        <!-- GROUP V -->
+        <div class="group">
+            <div class="group-header">
+                <h3>Group V (Others)</h3>
+                <button type="button" onclick="toggleGroup(this)">Show</button>
+            </div>
+            <div class="group-content">
+                Business Studies:
+                <select name="BusinessStudies"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                French:
+                <select name="French"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                German:
+                <select name="German"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Music:
+                <select name="Music"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select><br>
+                Arabic:
+                <select name="Arabic"><option value="">Select</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
+                    <option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option>
+                </select>
+            </div>
+        </div>
 
-Geography:
-<select name="Geography"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+        <!-- EMAIL -->
 
-CRE:
-<select name="CRE"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+<div class="email-box">
 
-IRE:
-<select name="IRE"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
+<h3>Enter your Email to Calculate Cluster Points</h3>
 
-HRE:
-<select name="HRE"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select>
+<input type="email" id="calc-email" name="email" required placeholder="Enter email here">
 
-<!-- ================= GROUP IV ================= -->
+</div>
 
-<h3>Group IV (Technical)</h3>
-
-Computer Studies:
-<select name="Computer Studies"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
-
-Agriculture:
-<select name="Agriculture"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
-
-Art & Design:
-<select name="Art & Design"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
-
-Home Science:
-<select name="Home Science"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select>
-
-<!-- ================= GROUP V ================= -->
-
-<h3>Group V (Others)</h3>
-
-Business Studies:
-<select name="Business Studies"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
-
-French:
-<select name="French"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
-
-German:
-<select name="German"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
-
-Music:
-<select name="Music"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select><br>
-
-Arabic:
-<select name="Arabic"><option value="">Select</option>
-<option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option>
-<option>C+</option><option>C</option><option>C-</option>
-<option>D+</option><option>D</option><option>D-</option><option>E</option>
-</select>
-
-<br><br>
-<button type="submit">Calculate All Cluster Points</button>
+<button type="submit">Calculate Cluster Points</button>
 
 </form>
 
+</div>
+</div>
+
+
+<script>
+
+function toggleGroup(button){
+
+const content = button.parentElement.nextElementSibling;
+
+if(content.style.display === "block"){
+content.style.display = "none";
+button.textContent = "Show";
+}
+else{
+content.style.display = "block";
+button.textContent = "Hide";
+}
+
+}
+
+
+function showHome(){
+
+document.getElementById('home-section').style.display = "block";
+document.getElementById('calculator').style.display = "none";
+
+}
+
+
+function showCalculator(){
+
+document.getElementById('home-section').style.display = "none";
+document.getElementById('calculator').style.display = "block";
+
+}
+
+
+const ADMIN_SECRET_CODE = "A7K3L9Q2";
+
+function checkAccess(){
+
+const code = document.getElementById("access-code").value.trim();
+
+if(!code){
+alert("Please enter an access code");
+return;
+}
+
+/* ADMIN ACCESS */
+if(code === ADMIN_SECRET_CODE){
+window.location.href = "/admin";
+return;
+}
+
+/* STUDENT ACCESS */
+let form = document.createElement("form");
+form.method = "POST";
+form.action = "/access";
+
+let input = document.createElement("input");
+input.type = "hidden";
+input.name = "access_code";
+input.value = code;
+
+form.appendChild(input);
+document.body.appendChild(form);
+form.submit();
+
+}
+
+</script>
+</body>
+</html>

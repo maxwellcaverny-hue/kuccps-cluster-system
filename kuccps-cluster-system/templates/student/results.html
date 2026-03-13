@@ -1,34 +1,80 @@
-<h2>All Cluster Points</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KUCCPS Cluster Results</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 800px;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        form {
+            margin: 0;
+        }
+        button {
+            padding: 5px 10px;
+        }
+        .access-code {
+            background-color: #e0ffe0;
+            padding: 10px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
 
-<table border="1" cellpadding="8">
-    <tr>
-        <th>Cluster</th>
-        <th>Points</th>
-        <th>Select Course</th>
-    </tr>
+    <h1>KUCCPS Cluster Calculation Results</h1>
 
-    {% for c, p in results.items() %}
-    <tr>
-        <td>{{ c }}</td>
-        <td>{{ p }}</td>
-        <td>
-            <form method="GET" action="/check-course">
-                <input type="hidden" name="cluster" value="{{ c }}">
-                <input type="hidden" name="points" value="{{ p }}">
+    {% if session.access_code %}
+    <div class="access-code">
+        <strong>Your Access Code:</strong> {{ session.access_code }} <br>
+        Use this code on the home page to retrieve your saved cluster points.
+    </div>
+    {% endif %}
 
-                <select name="course_name" required>
-                    <option value="">Select Course</option>
-                    {% for course in cluster_courses.get(c, []) %}
-                        <option value="{{ course.name }}">{{ course.name }}</option>
-                    {% endfor %}
-                </select>
+    <h2>Top Cluster Points</h2>
+    <table>
+        <tr>
+            <th>Cluster</th>
+            <th>Points</th>
+            <th>Select Course</th>
+        </tr>
 
-                <button type="submit">Go</button>
-            </form>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+        {% for c, p in results.items() %}
+        <tr>
+            <td>{{ c }}</td>
+            <td>{{ "%.3f"|format(p) }}</td>
+            <td>
+                <form method="GET" action="/check-course">
+                    <input type="hidden" name="cluster" value="{{ c }}">
+                    <input type="hidden" name="points" value="{{ p }}">
 
-<br>
-<a href="/results">Back</a>
+                    <select name="course_name" required>
+                        <option value="">Select Course</option>
+                        {% for course in cluster_courses.get(c, []) %}
+                            <option value="{{ course.name }}">{{ course.name }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="submit">Go</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <a href="/">Back to Home</a>
+
+</body>
+</html>

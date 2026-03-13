@@ -1,192 +1,532 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Admin Dashboard</title>
+<meta charset="UTF-8">
+<title>Admin System</title>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
+<style>
 
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 10px;
-        }
+body{
+font-family: Arial, sans-serif;
+background: linear-gradient(135deg,#e6f0ff,#ffffff);
+margin:0;
+}
 
-        th, td {
-            border: 1px solid #000;
-            padding: 8px;
-            vertical-align: top;
-            text-align: left;
-        }
+/* LOGIN */
 
-        th {
-            background: #f0f0f0;
-        }
+.login-wrapper{
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
 
-        textarea {
-            width: 100%;
-            height: 120px;
-        }
+.login-container{
+background:white;
+padding:40px 50px;
+border-radius:15px;
+box-shadow:0 10px 25px rgba(0,0,0,0.2);
+width:400px;
+}
 
-        input[type="text"],
-        input[type="number"],
-        select {
-            width: 100%;
-            padding: 6px;
-        }
+.login-container h2{
+text-align:center;
+color:#003366;
+}
 
-        button {
-            padding: 8px 14px;
-            cursor: pointer;
-        }
+label{
+display:block;
+margin-top:15px;
+font-weight:bold;
+color:#003366;
+}
 
-        .danger {
-            background: #c0392b;
-            color: #fff;
-            border: none;
-        }
+input{
+width:100%;
+padding:12px;
+margin-top:5px;
+border-radius:10px;
+border:2px solid #003366;
+}
 
-        .danger:hover {
-            background: #a93226;
-        }
+button{
+width:100%;
+background:#006600;
+color:white;
+padding:12px;
+margin-top:20px;
+border-radius:10px;
+border:none;
+cursor:pointer;
+}
 
-        hr {
-            margin: 25px 0;
-        }
-    </style>
+button:hover{
+background:#004d00;
+}
+
+.error{
+color:red;
+margin-top:15px;
+text-align:center;
+}
+
+/* DASHBOARD */
+
+.dashboard-page{
+font-family:'Segoe UI';
+background:#f4f6f8;
+}
+
+.container{
+max-width:1200px;
+margin:auto;
+padding:30px;
+}
+
+.tab-buttons{
+display:flex;
+border-bottom:2px solid #ccc;
+}
+
+.tab-buttons button{
+background:white;
+border:none;
+padding:12px 25px;
+cursor:pointer;
+font-weight:bold;
+color:#003366;
+}
+
+.tab-buttons button.active{
+background:#003366;
+color:white;
+}
+
+.tab-content{
+display:none;
+padding:20px 0;
+}
+
+.tab-content.active{
+display:block;
+}
+
+.card{
+background:white;
+border-radius:10px;
+padding:20px;
+margin-bottom:20px;
+box-shadow:0 5px 20px rgba(0,0,0,0.1);
+}
+
+.stats-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+gap:20px;
+}
+
+.stat-card{
+background:#003366;
+color:white;
+padding:20px;
+border-radius:10px;
+text-align:center;
+}
+
+.table-container{
+overflow-x:auto;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+padding:10px;
+border:1px solid #ccc;
+}
+
+th{
+background:#003366;
+color:white;
+}
+
+tr:nth-child(even){
+background:#f4f6f8;
+}
+
+</style>
 </head>
+
 <body>
 
-<h2>Admin Dashboard</h2>
-<a href="/logout">Logout</a>
+{% if login %}
 
-<hr>
+<div class="login-wrapper">
 
-<h3>Add Course</h3>
+<div class="login-container">
 
-<form method="post" action="/admin/add-course">
+<h2>Admin Login</h2>
 
-    <label><strong>Cluster (1–20)</strong></label><br>
-    <select name="cluster" required>
-        {% for i in range(1, 21) %}
-            <option value="{{ i }}">Cluster {{ i }}</option>
-        {% endfor %}
-    </select>
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
 
-    <br><br>
+<form method="POST" action="/admin">
 
-    <table>
-        <tr>
-            <th>Course Name</th>
-            <th>
-                Subject Requirements<br>
-                <small>One per line / OR using |</small>
-            </th>
-            <th>
-                Universities<br>
-                <small>One per line</small>
-            </th>
-            <th>
-                Cut-off Points<br>
-                <small>Same order</small>
-            </th>
-        </tr>
+<label>Email</label>
+<input type="text" name="username" required>
 
-        <tr>
-            <td>
-                <input type="text" name="name"
-                       placeholder="e.g Bachelor of Medicine" required>
-            </td>
+<label>Password</label>
+<input type="password" name="password" required>
 
-            <td>
-                <textarea name="requirements"
-placeholder="English: C+
-Mathematics: B
-Chemistry: B
-Biology: B-
-Physics: C+"></textarea>
-            </td>
+<button type="submit">Login</button>
 
-            <td>
-                <textarea name="universities"
-placeholder="University of Nairobi
-Kenyatta University
-Moi University"></textarea>
-            </td>
-
-            <td>
-                <textarea name="cutoffs"
-placeholder="44.467
-44.904
-43.200"></textarea>
-            </td>
-        </tr>
-    </table>
-
-    <br>
-    <button type="submit">Add Course</button>
 </form>
 
-<hr>
+</div>
 
-<h3>Existing Courses</h3>
+</div>
+
+{% else %}
+
+<div class="dashboard-page">
+
+<div class="container">
+
+<h2>Admin Dashboard</h2>
+
+<p><strong>Signed in as:</strong> {{ current_admin.name }} ({{ current_admin.email|mask_email }})</p>
+
+<a href="/logout">Logout</a>
+
+<div class="tab-buttons">
+<button class="active" onclick="openTab(event,'dashboard')">Dashboard</button>
+<button onclick="openTab(event,'admins')">Admin Users</button>
+<button onclick="openTab(event,'courses')">Courses</button>
+<button onclick="openTab(event,'users')">Calculated Users</button>
+</div>
+
+<!-- DASHBOARD -->
+
+<div id="dashboard" class="tab-content active">
+
+<div class="stats-grid">
+
+<div class="stat-card">
+<h3>{{ clusters_count }}</h3>
+<p>Clusters</p>
+</div>
+
+<div class="stat-card">
+<h3>{{ courses_count }}</h3>
+<p>Courses</p>
+</div>
+
+<div class="stat-card">
+<h3>{{ universities_count }}</h3>
+<p>University Entries</p>
+</div>
+
+<div class="stat-card">
+<h3>{{ admin_count }}</h3>
+<p>Admin Users</p>
+</div>
+
+</div>
+
+</div>
+
+<!-- ADMINS -->
+
+<div id="admins" class="tab-content">
+
+<div class="card">
+
+<h3>Create Admin</h3>
+
+<form method="post" action="/admin/create">
+
+<label>Name</label>
+<input type="text" name="name" required>
+
+<label>Email</label>
+<input type="email" name="email" required>
+
+<label>Password</label>
+<input type="password" name="password" required>
+
+<button type="submit">Add Admin</button>
+
+</form>
+
+</div>
+
+<div class="card table-container">
+
+<h3>Existing Admins</h3>
 
 <table>
-    <tr>
-        <th>ID</th>
-        <th>Course</th>
-        <th>Requirements</th>
-        <th>Universities</th>
-        <th>Cut-offs</th>
-        <th>Action</th>
-    </tr>
 
-    {% for cluster, course_list in courses.items() %}
-        {% for c in course_list %}
-        <tr>
-            <td>{{ c.id }}</td>
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Email</th>
+<th>Actions</th>
+</tr>
+</thead>
 
-            <td>
-                {{ c.name }}<br>
-                <small>Cluster {{ cluster }}</small>
-            </td>
+<tbody>
 
-            <td>
-                {% for s, g in c.requirements.items() %}
-                    {{ s }} ≥ {{ g }}<br>
-                {% endfor %}
-            </td>
+{% for admin in admins %}
 
-            <td>
-                {% for u in c.universities %}
-                    {{ u.name }}<br>
-                {% endfor %}
-            </td>
+<tr>
+<td>{{ admin.id }}</td>
+<td>{{ admin.name }}</td>
+<td>{{ admin.username }}</td>
 
-            <td>
-                {% for u in c.universities %}
-                    {{ u.cutoff }}<br>
-                {% endfor %}
-            </td>
+<td>
+<a href="/admin/delete-admin/{{ admin.id }}">
+<button style="background:red;color:white;">Delete</button>
+</a>
+</td>
 
-            <td>
-                <!-- ✏ EDIT -->
-                <a href="/admin/edit/{{ c.id }}">✏ Edit</a>
-                <br><br>
+</tr>
 
-                <!-- 🗑 DELETE -->
-                <form method="post"
-                      action="/admin/course/delete/{{ c.id }}"
-                      onsubmit="return confirm('Delete this course permanently?');">
-                    <button class="danger" type="submit">Delete</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    {% endfor %}
+{% endfor %}
+
+</tbody>
+
 </table>
+
+</div>
+
+</div>
+
+<!-- COURSES -->
+
+<div id="courses" class="tab-content">
+
+```
+<!-- Add Single Course -->
+<div class="card file-upload">
+    <h3>Add Single Course</h3>
+
+    <form class="admin-form" method="post" action="/admin/add-course">
+
+        <label>Cluster</label>
+        <input type="text" name="cluster" placeholder="e.g. 2" required>
+
+        <label>Course Name</label>
+        <input type="text" name="name" placeholder="BACHELOR OF COMMERCE" required>
+
+        <label>Minimum Subject Requirements</label>
+        <textarea 
+            name="requirements"
+            placeholder="Mathematics: C+  English/Kiswahili: B  Biology: C+  Chemistry: C+"
+            rows="4"
+            style="width:100%; padding:8px; border-radius:6px; border:1px solid #ccc;">
+        </textarea>
+
+        <label>University</label>
+        <input type="text" name="university" placeholder="University of Nairobi" required>
+
+        <label>Course Code</label>
+        <input type="text" name="course_code" placeholder="1263134" required>
+
+        <label>Cutoff Points</label>
+        <input type="text" name="cutoff" placeholder="32.613" required>
+
+        <button style="padding:5px 10px; font-size:13px;">Save Course Entry</button>
+
+    </form>
+</div>
+
+
+<!-- Upload Courses CSV -->
+<div class="card file-upload">
+
+    <h3>Upload Courses CSV</h3>
+
+    <form method="post" action="/admin/upload-csv" enctype="multipart/form-data">
+
+        <input type="file" name="courses_csv" required>
+
+        <button style="padding:5px 10px; font-size:13px;">
+            Replace With Selected CSV
+        </button>
+
+        <button type="button"
+                onclick="window.location.href='/admin/upload-bundled'"
+                style="padding:5px 10px; font-size:13px;">
+            Replace With Bundled courses.csv
+        </button>
+
+    </form>
+
+</div>
+
+
+<!-- COURSES TABLE -->
+<div class="card table-container">
+
+    <h3>All Courses</h3>
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Course Name</th>
+                <th>Cluster</th>
+                <th>Course Code</th>
+                <th>Cutoff</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% for course in courses %}
+
+            <tr>
+
+                <td>{{ course[0] }}</td>
+<td>{{ course[1] }}</td>
+<td>{{ course[2] }}</td>
+<td>{{ course[4] }}</td>
+<td>{{ course[5] }}</td>
+
+                <td>
+
+                    <a href="/admin/edit-course/{{ course.id }}">
+                        <button style="padding:4px 8px; font-size:12px;">
+                            Edit
+                        </button>
+                    </a>
+
+                    <a href="/admin/delete-course/{{ course.id }}">
+                        <button style="background:#cc0000;color:white;padding:4px 8px;font-size:12px;">
+                            Delete
+                        </button>
+                    </a>
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+```
+
+</div>
+
+
+
+<!-- CALCULATED USERS -->
+
+<div id="users" class="tab-content">
+
+<div class="card table-container">
+
+<h3>Calculated Users</h3>
+
+<div style="margin-bottom:15px;">
+
+<button onclick="selectAllUsers()">Select All</button>
+<button onclick="deleteSelected()">Delete Selected</button>
+
+</div>
+
+<table>
+
+<thead>
+<tr>
+<th>Select</th>
+<th>Date</th>
+<th>Access Code</th>
+<th>Name</th>
+<th>Best Cluster</th>
+<th>Top 3 Points</th>
+<th>Actions</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for user in calculated_users %}
+
+<tr>
+
+<td>
+<input type="checkbox" class="user-checkbox" value="{{ user.id }}">
+</td>
+
+<td>{{ user.date }}</td>
+<td>{{ user.access_code }}</td>
+<td>{{ user.name }}</td>
+<td>{{ user.best_cluster }}</td>
+<td>{{ user.top3_points }}</td>
+
+<td>
+
+<a href="/admin/view-user/{{ user.id }}">
+<button>View</button>
+</a>
+
+<a href="/admin/delete-user/{{ user.id }}">
+<button style="background:#cc0000;color:white;">Delete</button>
+</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+{% endif %}
+
+<script>
+
+function openTab(evt,tabName){
+
+let tabs=document.getElementsByClassName("tab-content");
+for(let i=0;i<tabs.length;i++){
+tabs[i].classList.remove("active");
+}
+
+let buttons=document.getElementsByClassName("tab-buttons")[0].children;
+for(let i=0;i<buttons.length;i++){
+buttons[i].classList.remove("active");
+}
+
+document.getElementById(tabName).classList.add("active");
+evt.currentTarget.classList.add("active");
+
+}
+
+</script>
 
 </body>
 </html>
