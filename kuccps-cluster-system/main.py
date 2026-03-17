@@ -1,32 +1,46 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, render_template, request, redirect, session, url_for, make_response, flash
 from functools import wraps
 import os
 import csv
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 import requests
-from requests.auth import HTTPBasicAuth
 import base64
 from datetime import datetime
-from flask import Flask
+from flask import jsonify
+from zoneinfo import ZoneInfo
 import json
 import random
 import string
 import smtplib
 from email.mime.text import MIMEText
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from flask import send_file
+import io
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = "kuccps-admin-secret"
+app.secret_key = os.environ.get("FLASK_SECRET")
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
-# ======= MPESA CONFIG =======
-MPESA_CONSUMER_KEY = "uDRO6DrbBALnrmGGirOFe4GNfAAoXALeGvr5Kds66AcDAD5i"
-MPESA_CONSUMER_SECRET = "mpApxueWEpYhE9xedaGkta7k83fLpoEuPiNES6bhMaPi3rHiQaSWXdlsJRErcAc"
-MPESA_SHORTCODE = "9514880"
-MPESA_PASSKEY = "12775367f40cd545f34d5ca77101622bf7c572fb3c6c287fef506ccea269e251"
-MPESA_CALLBACK_URL = "https://postinfective-unpraying-noelle.ngrok-free.dev/callback"
-MPESA_AMOUNT = 150
-MPESA_ACCOUNT_REF = "EARLY BIRD TECH SOLUTIONS KUCCPS CLUSTERS AND COURSES"
-MPESA_TRANSACTION_DESC = "KUCCPS Cluster Fee"
+# =========================
+# MPESA CONFIG
+# =========================
+consumer_key = os.environ.get("MPESA_CONSUMER_KEY")
+consumer_secret = os.environ.get("MPESA_CONSUMER_SECRET")
+
+shortcode = "9514880"
+
+passkey = os.environ.get("MPESA_PASSKEY")
 
 # =========================
 # DATABASE SETUP
@@ -39,7 +53,7 @@ def generate_access_code(length=8):
 
 def send_cluster_email(to_email, access_code, cluster_points):
     sender = "earlybirdonlinecyber@gmail.com"
-    password = "YOUR_GMAIL_APP_PASSWORD"  # Use Gmail App Password
+    password = os.environ.get("EMAIL_PASSWORD")
 
     subject = "Your KUCCPS Cluster Calculation is Ready"
     body = f"""Hello,
@@ -81,39 +95,74 @@ def db():
 def init_db():
     conn = db()
     c = conn.cursor()
+
+    # ADMINS
     c.execute("""
-        CREATE TABLE IF NOT EXISTS admins (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
+    CREATE TABLE IF NOT EXISTS admins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        name TEXT
+    )
     """)
+
+    # COURSES
     c.execute("""
-        CREATE TABLE IF NOT EXISTS courses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            cluster INTEGER
-        )
+    CREATE TABLE IF NOT EXISTS courses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        cluster INTEGER NOT NULL,
+        course_code TEXT
+    )
     """)
+
+    # SUBJECT REQUIREMENTS
     c.execute("""
-        CREATE TABLE IF NOT EXISTS requirements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            course_id INTEGER,
-            subject TEXT,
-            grade TEXT
-        )
+    CREATE TABLE IF NOT EXISTS requirements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_id INTEGER,
+        subject TEXT,
+        grade TEXT
+    )
     """)
+
+    # UNIVERSITIES OFFERING COURSE
     c.execute("""
-        CREATE TABLE IF NOT EXISTS universities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            course_id INTEGER,
-            name TEXT,
-            cutoff REAL
-        )
+    CREATE TABLE IF NOT EXISTS universities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_id INTEGER,
+        name TEXT,
+        course_code TEXT,
+        cutoff REAL
+    )
     """)
+
+    # CALCULATED USERS
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS calculated_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        access_code TEXT,
+        name TEXT,
+        best_cluster TEXT,
+        top3_points TEXT,
+        full_results TEXT
+    )
+    """)
+
+    # PAYMENTS TABLE
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        phone TEXT,
+        email TEXT,
+        checkout_id TEXT,
+        status TEXT
+    )
+    """)
+
     conn.commit()
     conn.close()
-
 
 init_db()
 
@@ -200,15 +249,44 @@ def home():
 def calculator():
     return render_template("student/calculator.html")
 
-
 @app.route("/results")
 def results():
     if "results" not in session:
         return redirect("/")
+
+    # Load courses from DB
+    conn = db()
+    cur = conn.cursor()
+    cur.execute("SELECT name, cluster FROM courses")
+    rows = cur.fetchall()
+    conn.close()
+
+    # Create a dict of clusters to courses
+    cluster_courses = {str(c): [] for c in range(1, 21)}
+    for name, cluster in rows:
+        try:
+            cluster = int(cluster)
+        except:
+            continue
+        cluster_courses[str(cluster)].append({
+            "name": name
+        })
+
+    # session["results"] now has all clusters (full_results)
+    full_results = session.get("results", {})  # all cluster points
+
+    # keep top 3 cluster points
+    top3_points = sorted(full_results.items(), key=lambda x: x[1], reverse=True)[:3]
+
+    # sort results by cluster number
+    sorted_results = dict(sorted(full_results.items(), key=lambda x: int(x[0])))
+
     return render_template(
         "student/results.html",
-        results=session["results"],
-        cluster_courses=session["cluster_courses"]
+        results=sorted_results,
+        top3=top3_points,
+        cluster_courses=cluster_courses,
+        points=max(full_results.values())  # pass default points for template links
     )
 
 # =========================
@@ -247,10 +325,6 @@ def calculate():
     # Save grades in session
     session["grades"] = grades
 
-    # ---- PAYMENT CHECK ----
-    if "payment_done" not in session:
-        return render_template("student/payment.html", grades=grades)
-
     # ---- compute cluster points ----
     results = {}
     for c in range(1, 21):
@@ -267,21 +341,38 @@ def calculate():
 
     # ---- save user calculation to DB ----
     email = request.form.get("email", "").strip()
+    # ---- prevent duplicate email ----
+    conn = db()
+    cur = conn.cursor()
 
+    cur.execute("SELECT id FROM calculated_users WHERE name=?", (email,))
+    existing_user = cur.fetchone()
+
+    if existing_user:
+        conn.close()
+        flash("Email already exists. Please use another email or use your access code to reopen results.")
+        return redirect("/")
     conn = db()
     cur = conn.cursor()
 
     cur.execute("""
-        INSERT INTO calculated_users (date, access_code, name, best_cluster, top3_points)
-        VALUES (?, ?, ?, ?, ?)
-    """, (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    INSERT INTO calculated_users (
+        date,
         access_code,
-        email,
-        str(best_cluster),
-        json.dumps(top3_points)
-    ))
-
+        name,
+        best_cluster,
+        top3_points,
+        full_results
+    )
+    VALUES (?, ?, ?, ?, ?, ?)
+""", (
+    datetime.now(ZoneInfo("Africa/Nairobi")).strftime("%Y-%m-%d %H:%M:%S"),
+    access_code,
+    email,
+    str(best_cluster),
+    json.dumps(top3_points),   # only top 3 used for email
+    json.dumps(results)        # store ALL clusters
+))
     conn.commit()
     conn.close()
 
@@ -302,37 +393,51 @@ def calculate():
     rows = cur.fetchall()
     conn.close()
 
-    cluster_courses = {c: [] for c in range(1, 21)}
+    cluster_courses = {str(c): [] for c in range(1, 21)}
 
     for name, cluster in rows:
-        cluster_courses[cluster].append({
+        try:
+            cluster = int(cluster)
+        except:
+            continue
+
+        if str(cluster) not in cluster_courses:
+            continue
+
+        cluster_courses[str(cluster)].append({
             "name": name
         })
+
 
     # ---- store results in session ----
     session["results"] = results
     session["cluster_email"] = cluster_email
-    session["cluster_courses"] = cluster_courses
     session["access_code"] = access_code
 
     return redirect("/results")
 
-from flask import Flask, request, session, redirect, flash, render_template
-import json
-
-@app.route("/access_code", methods=["POST"])
-def access_code():
+@app.route("/access", methods=["POST"])
+def access_by_code():
     code = request.form.get("access_code", "").strip().upper()
+    if not code:
+        return "Please enter an access code", 400
 
-    # Example: check DB or session for saved results
-    # Here we assume session stores past results for simplicity
-    if "saved_results" in session and session["saved_results"].get(code):
-        session["results"] = session["saved_results"][code]["results"]
-        session["cluster_courses"] = session["saved_results"][code]["cluster_courses"]
-        return redirect("/results")
-    else:
-        flash("Invalid access code or no saved results.")
-        return redirect("/calculate")
+    conn = db()
+    cur = conn.cursor()
+    cur.execute("SELECT full_results FROM calculated_users WHERE access_code=?", (code,))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return "❌ Invalid access code.", 400
+
+    results = json.loads(row[0])
+    # Sort clusters numerically
+    sorted_results = dict(sorted(results.items(), key=lambda x: int(x[0])))
+
+    session["results"] = sorted_results
+    session["access_code"] = code
+    return redirect("/results")
 
 
 # =========================
@@ -362,7 +467,7 @@ def check_subject_requirements(student_grades, requirements):
         for subject in options:
             if subject in clean_grades:
                 student_grade = clean_grades[subject]
-                if grade_order.get(student_grade, 0) >= grade_order[required_grade]:
+                if grade_order.get(student_grade, 0) >= grade_order.get(required_grade, 0):
                     met = True
                     break
                 matched_subject = subject
@@ -383,6 +488,7 @@ def check_subject_requirements(student_grades, requirements):
 # =========================
 @app.route("/check-course")
 def check_course():
+
     cluster = int(request.args.get("cluster"))
     points = float(request.args.get("points"))
     course_name = request.args.get("course_name")
@@ -390,43 +496,221 @@ def check_course():
     conn = db()
     cur = conn.cursor()
 
-    # Get course id
-    cur.execute("SELECT id FROM courses WHERE name=? AND cluster=?", (course_name, cluster))
+    # =========================
+    # GET COURSE
+    # =========================
+    cur.execute(
+        "SELECT id, course_code FROM courses WHERE name=? AND cluster=?",
+        (course_name, cluster)
+    )
+
     row = cur.fetchone()
+
     if not row:
         conn.close()
-        return "Course not found for this cluster"
-    course_id = row[0]
+        return "Course not found"
 
-    # Get requirements
-    cur.execute("SELECT subject, grade FROM requirements WHERE course_id=?", (course_id,))
+    course_id = row[0]
+    course_code = row[1]
+
+    # =========================
+    # GET REQUIREMENTS
+    # =========================
+    cur.execute(
+        "SELECT subject, grade FROM requirements WHERE course_id=?",
+        (course_id,)
+    )
+
     requirements = dict(cur.fetchall())
 
-    # Get universities
-    cur.execute("SELECT name, cutoff FROM universities WHERE course_id=?", (course_id,))
+    # =========================
+    # GET UNIVERSITIES
+    # =========================
+    cur.execute(
+        "SELECT name, cutoff, course_code FROM universities WHERE course_id=?",
+        (course_id,)
+    )
+
     universities = cur.fetchall()
+
     conn.close()
 
-    # Subject requirement check
-    subject_check = check_subject_requirements(session.get("grades", {}), requirements)
+    # =========================
+    # SUBJECT CHECK
+    # =========================
+    subject_check = check_subject_requirements(
+        session.get("grades", {}),
+        requirements
+    )
 
     qualified = []
     not_qualified = []
+
+    # =========================
+    # CHECK QUALIFICATION
+    # =========================
     if subject_check["passed"]:
-        for uni, cutoff in universities:
+
+        for uni, cutoff, code in universities:
+
+            uni = uni if uni and uni.strip() else "Unknown University"
+
+            margin = round(points - cutoff, 3)
+
             if points >= cutoff:
-                qualified.append((uni, cutoff))
+                qualified.append({
+                    "university": uni,
+                    "course_code": code,
+                    "cutoff": cutoff,
+                    "margin": f"+{margin}"
+                })
             else:
-                not_qualified.append((uni, cutoff))
+                not_qualified.append({
+                    "university": uni,
+                    "course_code": code,
+                    "cutoff": cutoff,
+                    "margin": f"{margin}"
+                })
+
+    else:
+
+        for uni, cutoff, code in universities:
+            not_qualified.append({
+                "university": uni,
+                "course_code": code,
+                "cutoff": cutoff,
+                "margin": "Subjects not met"
+            })
+
+    # =========================
+    # FALLBACK IF EMPTY
+    # =========================
+    if not qualified and not not_qualified:
+
+        for uni, cutoff, code in universities:
+            not_qualified.append({
+                "university": uni,
+                "course_code": code,
+                "cutoff": cutoff,
+                "margin": "Check requirements"
+            })
 
     return render_template(
         "student/course_result.html",
         course=course_name,
+        course_code=course_code,
         cluster=cluster,
         points=points,
         subject_check=subject_check,
         qualified=qualified,
         not_qualified=not_qualified
+    )
+
+
+@app.route("/download-course-pdf")
+def download_course_pdf():
+
+    course = request.args.get("course")
+    cluster = request.args.get("cluster")
+    points = float(request.args.get("points"))
+
+    conn = db()
+    cur = conn.cursor()
+
+    # Get course id
+    cur.execute("SELECT id FROM courses WHERE name=?", (course,))
+    row = cur.fetchone()
+
+    if not row:
+        return "Course not found"
+
+    course_id = row[0]
+
+    # Get universities
+    cur.execute("SELECT name, course_code, cutoff FROM universities WHERE course_id=?", (course_id,))
+    universities = cur.fetchall()
+
+    conn.close()
+
+    qualified = []
+    not_qualified = []
+
+    for uni, code, cutoff in universities:
+        if points >= cutoff:
+            qualified.append((uni, code, cutoff, points - cutoff))
+        else:
+            not_qualified.append((uni, code, cutoff, cutoff - points))
+
+    buffer = io.BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4
+    )
+
+    styles = getSampleStyleSheet()
+    elements = []
+
+    elements.append(Paragraph("Early Bird Course Finder", styles['Title']))
+    elements.append(Spacer(1,10))
+
+    elements.append(Paragraph(f"Course: {course}", styles['Normal']))
+    elements.append(Paragraph(f"Cluster: {cluster}", styles['Normal']))
+    elements.append(Paragraph(f"Cluster Points: {points}", styles['Normal']))
+    elements.append(Spacer(1,20))
+
+    # Qualified table
+    if qualified:
+
+        data = [["#", "University", "Course Code", "Cutoff", "Margin"]]
+
+        for i,(u,code,c,m) in enumerate(qualified,1):
+            data.append([i,u,code,c,f"+{m:.3f}"])
+
+        table = Table(data)
+
+        table.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,0),colors.darkblue),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+            ('GRID',(0,0),(-1,-1),1,colors.grey)
+        ]))
+
+        elements.append(Paragraph("Qualified Universities", styles['Heading2']))
+        elements.append(table)
+        elements.append(Spacer(1,20))
+
+    # Not qualified table
+    if not_qualified:
+
+        data = [["#", "University", "Course Code", "Cutoff", "Margin"]]
+
+        for i,(u,code,c,m) in enumerate(not_qualified,1):
+            data.append([i,u,code,c,f"-{m:.3f}"])
+
+        table = Table(data)
+
+        table.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,0),colors.darkblue),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+            ('GRID',(0,0),(-1,-1),1,colors.grey)
+        ]))
+
+        elements.append(Paragraph("Not Qualified Universities", styles['Heading2']))
+        elements.append(table)
+
+    elements.append(Spacer(1,40))
+    elements.append(Paragraph("Thanks for using Early Bird Course Finder", styles['Normal']))
+    elements.append(Paragraph("For inquiries: 0759080437", styles['Normal']))
+
+    doc.build(elements)
+
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="course_result.pdf",
+        mimetype="application/pdf"
     )
 
 
@@ -436,7 +720,6 @@ def check_course():
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin_login():
-
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -453,86 +736,83 @@ def admin_login():
             session["admin"] = True
             session["admin_name"] = admin["name"] or username
             session["admin_email"] = admin["username"]
-
             return redirect(url_for("admin_dashboard"))
 
-        return render_template(
+        resp = make_response(
+            render_template(
+                "admin/dashboard.html",
+                login=True,
+                error="Invalid login",
+                current_admin={"name": "", "email": ""}
+            )
+        )
+        # Prevent caching
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+
+    resp = make_response(
+        render_template(
             "admin/dashboard.html",
             login=True,
-            error="Invalid login",
             current_admin={"name": "", "email": ""}
         )
-
-    return render_template(
-        "admin/dashboard.html",
-        login=True,
-        current_admin={"name": "", "email": ""}
     )
+    # Prevent caching
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
-
-@app.route("/admin/create", methods=["POST"])
-@admin_required
-def create_admin():
-
-    name = request.form.get("name")
-    email = request.form.get("email")
-    password = request.form.get("password")
-
-    if not name or not email or not password:
-        flash("All fields are required!")
-        return redirect(url_for("admin_dashboard"))
-
-    conn = db()
-    cur = conn.cursor()
-
-    try:
-        cur.execute(
-            "INSERT INTO admins (username, password, name) VALUES (?, ?, ?)",
-            (email, generate_password_hash(password), name)
-        )
-        conn.commit()
-        flash(f"✅ Admin '{name}' created successfully!")
-
-    except sqlite3.IntegrityError:
-        flash(f"❌ Admin with email '{email}' already exists!")
-
-    finally:
-        conn.close()
-
-    return redirect(url_for("admin_dashboard"))
-
-
+# =========================
+# ADMIN DASHBOARD (MODIFIED)
+# =========================
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
+    # Determine which section to show (default: overview)
+    show_section = request.args.get("show", "overview")
 
     conn = db()
     cur = conn.cursor()
 
     # -------------------------
-    # LOAD COURSES
+    # Load Courses
     # -------------------------
     cur.execute("SELECT id, name, cluster FROM courses")
     rows = cur.fetchall()
-
     courses = {c: [] for c in range(1, 21)}
 
     for cid, name, cluster in rows:
 
+        try:
+            cluster = int(cluster)
+        except:
+            continue
+
         if cluster not in courses:
             continue
 
-        cur.execute(
-            "SELECT subject, grade FROM requirements WHERE course_id=?",
-            (cid,)
-        )
-        reqs = dict(cur.fetchall())
+        cur.execute("SELECT subject, grade FROM requirements WHERE course_id=?", (cid,))
+        req_rows = cur.fetchall()
 
-        cur.execute(
-            "SELECT name, cutoff FROM universities WHERE course_id=?",
-            (cid,)
-        )
-        unis = [{"name": u, "cutoff": c} for u, c in cur.fetchall()]
+        reqs = ""
+        for subject, grade in req_rows:
+            reqs += f"{subject} : {grade}\n"
+
+
+
+        cur.execute("SELECT name, course_code, cutoff FROM universities WHERE course_id=?", (cid,))
+        uni_rows = cur.fetchall()
+
+        unis = []
+        for u, code, cutoff in uni_rows:
+            unis.append({
+                "name": u,
+                "course_code": code,
+                "cutoff": cutoff
+            })
 
         courses[cluster].append({
             "id": cid,
@@ -541,8 +821,9 @@ def admin_dashboard():
             "universities": unis
         })
 
+
     # -------------------------
-    # DASHBOARD COUNTS
+    # Dashboard Counts
     # -------------------------
     cur.execute("SELECT COUNT(DISTINCT cluster) FROM courses")
     clusters_count = cur.fetchone()[0]
@@ -557,37 +838,35 @@ def admin_dashboard():
     admin_count = cur.fetchone()[0]
 
     # -------------------------
-    # CALCULATED USERS
+    # Calculated Users
     # -------------------------
     cur.execute("""
-        SELECT id, date, access_code, name, best_cluster, top3_points
-        FROM calculated_users
-    """)
-
+            SELECT id, date, access_code, name, full_results
+            FROM calculated_users
+            ORDER BY id DESC
+        """)
     calculated_users = [
-        dict(
-            id=r[0],
-            date=r[1],
-            access_code=r[2],
-            name=r[3],
-            best_cluster=r[4],
-            top3_points=r[5]
-        )
-        for r in cur.fetchall()
-    ]
+            dict(
+                id=r[0],
+                date=r[1],
+                access_code=r[2],
+                name=r[3],
+                full_results=r[4]
+            )
+            for r in cur.fetchall()
+        ]
 
     # -------------------------
-    # LOAD ADMINS
+    # Admins
     # -------------------------
     cur.execute("SELECT id, username, name FROM admins")
-
     admins = [
         dict(id=r[0], username=r[1], name=r[2])
         for r in cur.fetchall()
     ]
 
     # -------------------------
-    # CURRENT LOGGED IN ADMIN
+    # Current Admin
     # -------------------------
     current_admin = {
         "name": session.get("admin_name", "Admin"),
@@ -596,163 +875,310 @@ def admin_dashboard():
 
     conn.close()
 
-    return render_template(
-        "admin/dashboard.html",
-        courses=courses,
-        admins=admins,
-        subjects=SUBJECTS,
-        clusters_count=clusters_count,
-        courses_count=courses_count,
-        universities_count=universities_count,
-        admin_count=admin_count,
-        calculated_users=calculated_users,
-        current_admin=current_admin
+    # -------------------------
+    # Render dashboard
+    # -------------------------
+    resp = make_response(
+        render_template(
+            "admin/dashboard.html",
+            courses=courses,
+            admins=admins,
+            subjects=SUBJECTS,
+            clusters_count=clusters_count,
+            courses_count=courses_count,
+            universities_count=universities_count,
+            admin_count=admin_count,
+            calculated_users=calculated_users,
+            current_admin=current_admin,
+            show_section=show_section  # tells template which tab to show
+        )
     )
 
+    # Prevent caching
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
 
-@app.route("/access", methods=["POST"])
-def access_by_code():
+    return resp
 
-    code = request.form.get("access_code", "").strip().upper()
 
-    if not code:
-        return "Please enter an access code", 400
+# =========================
+# CRUD ROUTES THAT STAY ON CURRENT SECTION
+# =========================
 
-    conn = db()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT best_cluster, top3_points
-        FROM calculated_users
-        WHERE access_code=?
-    """, (code,))
-
-    row = cur.fetchone()
-    conn.close()
-
-    if not row:
-        return "❌ Invalid access code. Please check your email.", 400
-
-    best_cluster = row[0]
-    top3_points = json.loads(row[1])
-
-    # Prepare results
-    cluster_email = {
-        "Cluster 1": top3_points[0] if len(top3_points) > 0 else 0,
-        "Cluster 2": top3_points[1] if len(top3_points) > 1 else 0,
-        "Cluster 3": top3_points[2] if len(top3_points) > 2 else 0
-    }
-
-    # Save to session
-    session["results"] = cluster_email
-    session["access_code"] = code
-
-    return redirect("/results")
-
-# Route to add a new course manually
-@app.route("/admin/add-course", methods=["POST"])
+# Delete Calculated User
+@app.route("/admin/delete-user/<int:user_id>")
 @admin_required
-def add_course():
-    data = request.form
+def delete_user(user_id):
+    conn = db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM calculated_users WHERE id=?", (user_id,))
+    conn.commit()
+    conn.close()
+    flash("✅ User deleted successfully!")
+    return redirect(url_for("admin_dashboard", show="calculated_users"))
+
+@app.route("/admin/edit-course/<int:course_id>", methods=["POST"])
+@admin_required
+def edit_course(course_id):
+
+    name = request.form["name"]
+    requirements_text = request.form.get("requirements", "")
+
+    universities = request.form["universities"].split("\n")
+    codes = request.form["course_codes"].split("\n")
+    cutoffs = request.form["cutoffs"].split("\n")
+
     conn = db()
     cur = conn.cursor()
 
-    cur.execute(
-        "INSERT INTO courses (name, cluster, course_code, cutoff) VALUES (?, ?, ?, ?)",
-        (data["name"], data["cluster"], data["course_code"], data["cutoff"])
-    )
-    course_id = cur.lastrowid
+    # -----------------------------
+    # UPDATE COURSE NAME
+    # -----------------------------
+    cur.execute("UPDATE courses SET name=? WHERE id=?", (name, course_id))
 
-    # Insert requirements
-    requirements = data["requirements"].split("|")  # e.g. "Math:C+ | English:B"
-    for r in requirements:
-        if ":" in r:
-            subject, grade = r.strip().split(":")
-            cur.execute("INSERT INTO requirements (course_id, subject, grade) VALUES (?, ?, ?)", (course_id, subject.strip(), grade.strip()))
+    # -----------------------------
+    # UPDATE REQUIREMENTS
+    # -----------------------------
+    cur.execute("DELETE FROM requirements WHERE course_id=?", (course_id,))
 
-    # Insert university
-    cur.execute("INSERT INTO universities (course_id, name, cutoff) VALUES (?, ?, ?)", (course_id, data["university"], data["cutoff"]))
+    if requirements_text:
+        lines = requirements_text.splitlines()
+
+        for r in lines:
+            parts = r.split(":", 1)
+
+            if len(parts) == 2:
+                subject = parts[0].strip()
+                grade = parts[1].strip()
+
+                cur.execute(
+                    "INSERT INTO requirements (course_id, subject, grade) VALUES (?, ?, ?)",
+                    (course_id, subject, grade)
+                )
+
+    # -----------------------------
+    # UPDATE UNIVERSITIES
+    # -----------------------------
+    cur.execute("DELETE FROM universities WHERE course_id=?", (course_id,))
+
+    for u, c, cut in zip(universities, codes, cutoffs):
+
+        if not u.strip():
+            continue
+
+        cur.execute(
+            "INSERT INTO universities(course_id,name,course_code,cutoff) VALUES (?,?,?,?)",
+            (course_id, u.strip(), c.strip(), cut.strip())
+        )
 
     conn.commit()
     conn.close()
-    flash("Course added successfully!")
-    return redirect(url_for("admin_dashboard"))
+
+    flash("✅ Course updated successfully!")
+    return redirect(url_for("admin_dashboard", show="courses") + "#courses")
+
+# =========================
+# ADD COURSE
+# =========================
+@app.route("/admin/add-course", methods=["POST"])
+@admin_required
+def add_course():
+
+    name = request.form["name"]
+    cluster = request.form["cluster"]
+    requirements_text = request.form.get("requirements", "")
+
+    universities = request.form.get("universities", "").split("\n")
+    codes = request.form.get("course_codes", "").split("\n")
+    cutoffs = request.form.get("cutoffs", "").split("\n")
+
+    conn = db()
+    cur = conn.cursor()
+
+    # -----------------------------
+    # INSERT COURSE
+    # -----------------------------
+    cur.execute(
+        "INSERT INTO courses (name, cluster) VALUES (?, ?)",
+        (name, cluster)
+    )
+
+    course_id = cur.lastrowid
+
+    # -----------------------------
+    # INSERT REQUIREMENTS
+    # -----------------------------
+    if requirements_text:
+
+        for r in requirements_text.splitlines():
+
+            r = r.strip()
+            if not r:
+                continue
+
+            parts = r.split(":", 1)
+
+            if len(parts) == 2:
+                subject = parts[0].strip()
+                grade = parts[1].strip()
+
+                cur.execute(
+                    "INSERT INTO requirements (course_id, subject, grade) VALUES (?, ?, ?)",
+                    (course_id, subject, grade)
+                )
+
+    # -----------------------------
+    # INSERT UNIVERSITIES
+    # -----------------------------
+    for u, c, cut in zip(universities, codes, cutoffs):
+
+        if not u.strip():
+            continue
+
+        cur.execute(
+            "INSERT INTO universities (course_id, name, course_code, cutoff) VALUES (?, ?, ?, ?)",
+            (course_id, u.strip(), c.strip(), cut.strip())
+        )
+
+    conn.commit()
+    conn.close()
+
+    flash("✅ Course added successfully!")
+    return redirect(url_for("admin_dashboard", show="courses") + "#courses")
+
+# Create Admin
+@app.route("/admin/create", methods=["POST"])
+@admin_required
+def create_admin():
+    name = request.form.get("name")
+    email = request.form.get("email")
+    password = request.form.get("password")
+
+    if not name or not email or not password:
+        flash("All fields are required!")
+        return redirect(url_for("admin_dashboard", show="admins"))
+
+    conn = db()
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            "INSERT INTO admins (username, password, name) VALUES (?, ?, ?)",
+            (email, generate_password_hash(password), name)
+        )
+        conn.commit()
+        flash(f"✅ Admin '{name}' created successfully!")
+    except sqlite3.IntegrityError:
+        flash(f"❌ Admin with email '{email}' already exists!")
+    finally:
+        conn.close()
+
+    return redirect(url_for("admin_dashboard", show="admins"))
+
+
+# Delete Admin
+@app.route("/admin/delete-admin/<int:admin_id>")
+@admin_required
+def delete_admin(admin_id):
+    conn = db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM admins WHERE id=?", (admin_id,))
+    conn.commit()
+    conn.close()
+    flash("✅ Admin deleted successfully!")
+    return redirect(url_for("admin_dashboard", show="admins"))
 
 
 # Route to upload courses CSV
 @app.route("/admin/upload-csv", methods=["POST"])
 @admin_required
 def upload_courses_csv():
-    import csv, io
+
+    import csv, io, re
 
     file = request.files.get("courses_csv")
+
     if not file:
-        flash("No file selected")
+        flash("No CSV selected")
         return redirect(url_for("admin_dashboard"))
 
     conn = db()
     cur = conn.cursor()
 
-    # For tracking current course/cluster while reading rows
-    current_course_name = None
+    reader = csv.DictReader(io.TextIOWrapper(file.stream, encoding="utf-8-sig"))
+
+    current_course = None
     current_cluster = None
-    current_requirements = ""
+    course_id = None
 
-    reader = csv.reader(io.TextIOWrapper(file.stream, encoding="utf-8"))
     for row in reader:
-        # Skip empty rows
-        if not any(row):
-            continue
 
-        # Detect new course row (first column non-empty string, second column = cluster)
-        if row[0] and row[1]:
-            current_course_name = row[0].strip()
-            try:
-                current_cluster = int(row[1].strip())
-            except ValueError:
-                current_cluster = None
-            current_requirements = row[3] if len(row) > 3 else ""
-            continue  # Skip to next row
+        course_value = (row.get("course_name") or "").strip()
+        cluster_value = (row.get("cluster") or "").strip()
+        requirements_value = (row.get("requirements") or "").strip()
 
-        # University rows (usually first column empty)
-        if current_course_name and current_cluster is not None:
-            course_code = row[2].strip() if len(row) > 2 else ""
-            university_name = row[3].strip() if len(row) > 3 else ""
-            cutoff_str = row[4].strip() if len(row) > 4 else "0"
-            try:
-                cutoff = float(cutoff_str) if cutoff_str and cutoff_str != "-" else 0
-            except ValueError:
-                cutoff = 0
+        # -------- NEW COURSE --------
+        if course_value:
 
-            # Insert course only once per course name
+            current_course = course_value
+            current_cluster = int(cluster_value)
+
             cur.execute(
-                "INSERT INTO courses (name, cluster, course_code, cutoff) VALUES (?, ?, ?, ?)",
-                (current_course_name, current_cluster, course_code, cutoff)
+                "INSERT INTO courses (name, cluster) VALUES (?, ?)",
+                (current_course, current_cluster)
             )
+
             course_id = cur.lastrowid
 
-            # Handle requirements
-            reqs = current_requirements.split("|")
-            for r in reqs:
-                if ":" in r:
-                    subject, grade = r.strip().split(":")
-                    cur.execute(
-                        "INSERT INTO requirements (course_id, subject, grade) VALUES (?, ?, ?)",
-                        (course_id, subject.strip(), grade.strip())
-                    )
+        # -------- REQUIREMENTS (can appear later) --------
+        if requirements_value and course_id:
 
-            # Insert university info
-            if university_name:
+            reqs = re.split(r'\||\n', requirements_value)
+
+            for r in reqs:
+
+                r = r.strip()
+
+                if not r or ":" not in r:
+                    continue
+
+                subject, grade = r.split(":", 1)
+
+                # CLEAN SUBJECT FORMAT (removes space before :)
+                subject = subject.replace(" :", "").strip()
+                grade = grade.strip()
+
                 cur.execute(
-                    "INSERT INTO universities (course_id, name, cutoff) VALUES (?, ?, ?)",
-                    (course_id, university_name, cutoff)
+                    "INSERT INTO requirements (course_id, subject, grade) VALUES (?, ?, ?)",
+                    (course_id, subject, grade)
                 )
+
+        # -------- UNIVERSITY DATA --------
+        university = (row.get("university") or "").strip()
+        course_code = (row.get("course_code") or "").strip()
+        cutoff_value = (row.get("cutoff") or "").strip()
+
+        if cutoff_value in ["", "-", "NA", "N/A"]:
+            cutoff = 0
+        else:
+            try:
+                cutoff = float(cutoff_value)
+            except:
+                cutoff = 0
+
+        if university and course_id:
+
+            cur.execute(
+                "INSERT INTO universities (course_id, name, course_code, cutoff) VALUES (?, ?, ?, ?)",
+                (course_id, university, course_code, cutoff)
+            )
 
     conn.commit()
     conn.close()
-    flash("✅ CSV uploaded successfully!")
-    return redirect(url_for("admin_dashboard"))
 
+    flash("CSV imported successfully")
+    return redirect(url_for("admin_dashboard"))
 
 # Route to logout
 @app.route("/logout")
@@ -760,265 +1186,20 @@ def logout():
     session.clear()
     return redirect(url_for("admin_login"))
 
-import sqlite3
-from werkzeug.security import generate_password_hash
-import os
-
-DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "kuccps.db")
-
-conn = sqlite3.connect(DB)
-c = conn.cursor()
-
-# 1. Admins
-c.execute("""
-CREATE TABLE IF NOT EXISTS admins (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    name TEXT
-)
-""")
-
-# 2. Courses
-c.execute("""
-CREATE TABLE IF NOT EXISTS courses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    cluster INTEGER NOT NULL,
-    course_code TEXT,
-    cutoff REAL
-)
-""")
-
-# 3. Requirements
-c.execute("""
-CREATE TABLE IF NOT EXISTS requirements (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    course_id INTEGER NOT NULL,
-    subject TEXT NOT NULL,
-    grade TEXT NOT NULL,
-    FOREIGN KEY(course_id) REFERENCES courses(id)
-)
-""")
-
-# 4. Universities
-c.execute("""
-CREATE TABLE IF NOT EXISTS universities (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    course_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    cutoff REAL,
-    FOREIGN KEY(course_id) REFERENCES courses(id)
-)
-""")
-
-# 5. Calculated Users
-c.execute("""
-CREATE TABLE IF NOT EXISTS calculated_users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT NOT NULL,
-    access_code TEXT NOT NULL,
-    name TEXT NOT NULL,
-    best_cluster TEXT,
-    top3_points TEXT
-)
-""")
-
-# Optional: create default admin
-c.execute("SELECT COUNT(*) FROM admins")
-if c.fetchone()[0] == 0:
-    c.execute(
-        "INSERT INTO admins (username, password, name) VALUES (?, ?, ?)",
-        ("admin", generate_password_hash("admin123"), "Super Admin")
-    )
-    print("✅ Default admin created: admin / admin123")
-
-conn.commit()
-conn.close()
-print("✅ All tables created successfully")
-
-import requests
-from flask import request, redirect, url_for, session
-@app.route("/mpesa_callback", methods=["POST"])
-def mpesa_callback():
-    data = request.json
-    print("MPESA CALLBACK:", data)
-    
-    try:
-        result_code = data["Body"]["stkCallback"]["ResultCode"]
-        callback_items = data["Body"]["stkCallback"].get("CallbackMetadata", {}).get("Item", [])
-        
-        phone = ""
-        amount = 0
-        for item in callback_items:
-            if item["Name"] == "PhoneNumber":
-                phone = str(item["Value"])
-            if item["Name"] == "Amount":
-                amount = float(item["Value"])
-
-        conn = db()
-        cur = conn.cursor()
-
-        if result_code == 0:
-            cur.execute(
-                "INSERT INTO payments (phone, amount, status, timestamp) VALUES (?, ?, ?, ?)",
-                (phone, amount, "SUCCESS", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            )
-        else:
-            cur.execute(
-                "INSERT INTO payments (phone, amount, status, timestamp) VALUES (?, ?, ?, ?)",
-                (phone, amount, "FAILED", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            )
-
-        conn.commit()
-        conn.close()
-
-    except Exception as e:
-        print("Callback error:", e)
-
-    return {"ResultCode": 0, "ResultDesc": "Accepted"}
-
-@app.route("/check-payment", methods=["GET"])
-def check_payment():
-    phone = request.args.get("phone")
-    if not phone:
-        return {"status": "error", "message": "Phone number required"}
-
-    conn = db()
-    cur = conn.cursor()
-    cur.execute("SELECT status FROM payments WHERE phone=? ORDER BY id DESC LIMIT 1", (phone,))
-    row = cur.fetchone()
-    conn.close()
-
-    if row:
-        return {"status": row[0].lower()}
-    else:
-        return {"status": "pending"}
-
-@app.route("/stk_push", methods=["POST"])
-def stk_push():
-    phone = request.form.get("phone")
-    if not phone:
-        return "Phone number required"
-
-    if phone.startswith("07"):
-        phone = "254" + phone[1:]
-
-    response = stk_push_request(phone)
-
-    if response.get("ResponseCode") == "0":
-        return render_template("student/waiting_payment.html", phone=phone)
-    else:
-        print("STK push failed:", response)
-        return "Payment initiation failed, try again."
-
-# =========================
-# MPESA ACCESS TOKEN
-# =========================
-def get_access_token():
-    url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-    response = requests.get(
-        url,
-        auth=HTTPBasicAuth(MPESA_CONSUMER_KEY.strip(), MPESA_CONSUMER_SECRET.strip()),
-        allow_redirects=False
-    )
-    print("STATUS:", response.status_code)
-    print("BODY:", response.text)
-    if response.status_code == 200:
-        return response.json()["access_token"]
-    else:
-        raise Exception(f"Failed to get access token: {response.status_code} {response.text}")
-
-# =========================
-# STK PUSH REQUEST
-# =========================
-def stk_push_request(phone_number):
-
-    access_token = get_access_token()
-
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-
-    password = base64.b64encode(
-        (MPESA_SHORTCODE + MPESA_PASSKEY + timestamp).encode()
-    ).decode("utf-8")
-
-    url = "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "BusinessShortCode": MPESA_SHORTCODE,
-        "Password": password,
-        "Timestamp": timestamp,
-        "TransactionType": "CustomerBuyGoodsOnline",
-        "Amount": MPESA_AMOUNT,
-        "PartyA": phone_number,
-        "PartyB": "8583554",
-        "PhoneNumber": phone_number,
-        "CallBackURL": MPESA_CALLBACK_URL,
-        "AccountReference": MPESA_ACCOUNT_REF,
-        "TransactionDesc": MPESA_TRANSACTION_DESC
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-
-    print("MPESA RESPONSE:", response.json())
-
-    return response.json()
-
-
 # =========================
 # ADMIN ACTION ROUTES
 # =========================
 
-# Delete Admin
-@app.route("/admin/delete-admin/<int:admin_id>")
-@admin_required
-def delete_admin(admin_id):
+@app.template_filter("from_json")
+def from_json_filter(value):
+    try:
+        return json.loads(value)
+    except:
+        return {}
 
-    conn = db()
-    cur = conn.cursor()
-
-    cur.execute("DELETE FROM admins WHERE id=?", (admin_id,))
-    conn.commit()
-
-    conn.close()
-
-    return redirect(url_for("admin_dashboard"))
-
-
-# Edit Course (placeholder page)
-@app.route("/admin/edit-course/<int:course_id>")
-@admin_required
-def edit_course(course_id):
-
-    conn = db()
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM courses WHERE id=?", (course_id,))
-    course = cur.fetchone()
-
-    cur.execute("SELECT subject, grade FROM requirements WHERE course_id=?", (course_id,))
-    requirements = cur.fetchall()
-
-    cur.execute("SELECT name, cutoff, course_code FROM universities WHERE course_id=?", (course_id,))
-    universities = cur.fetchall()
-
-    conn.close()
-
-    return render_template(
-        "admin/edit_course.html",
-        course=course,
-        requirements=requirements,
-        universities=universities
-    )
-
-
-# Delete Course
+# =========================
+# DELETE COURSE
+# =========================
 @app.route("/admin/delete-course/<int:course_id>")
 @admin_required
 def delete_course(course_id):
@@ -1026,55 +1207,270 @@ def delete_course(course_id):
     conn = db()
     cur = conn.cursor()
 
-    # delete related data first
+    # delete requirements first
     cur.execute("DELETE FROM requirements WHERE course_id=?", (course_id,))
+
+    # delete universities
     cur.execute("DELETE FROM universities WHERE course_id=?", (course_id,))
+
+    # delete course
     cur.execute("DELETE FROM courses WHERE id=?", (course_id,))
 
     conn.commit()
     conn.close()
 
-    return redirect(url_for("admin_dashboard"))
+    flash("✅ Course deleted successfully!")
+    return redirect(url_for("admin_dashboard", show="courses") + "#courses")
+
+@app.route("/stkpush", methods=["POST"])
+def stkpush():
+
+    data = request.get_json()
+    print("STK REQUEST:", data)
+
+    phone = data.get("phone")
+
+    # Normalize phone
+    if phone.startswith("07"):
+        phone = "254" + phone[1:]
+    elif phone.startswith("+254"):
+        phone = phone[1:]
+
+    email = data.get("email")
+
+    if not phone or not email:
+        return jsonify({"status": "error", "message": "Phone and email required"})
 
 
-# View Calculated User
-@app.route("/admin/view-user/<int:user_id>")
-@admin_required
-def view_user(user_id):
+    conn = sqlite3.connect("kuccps.db")
+    cursor = conn.cursor()
 
-    conn = db()
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
+    # Prevent duplicate emails
+    cursor.execute("SELECT id FROM calculated_users WHERE name=?", (email,))
+    existing = cursor.fetchone()
 
-    cur.execute("SELECT * FROM calculated_users WHERE id=?", (user_id,))
-    user = cur.fetchone()
+    if existing:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "This email already exists. Fetch your access code instead."
+        })
 
     conn.close()
 
-    return render_template(
-        "admin/view_user.html",
-        user=user
+
+    try:
+
+
+        # GET ACCESS TOKEN (LIVE)
+        url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+
+        r = requests.get(url, auth=(consumer_key, consumer_secret))
+        token_response = r.json()
+
+        if "access_token" not in token_response:
+            return jsonify({"status":"error","message":"Failed to get access token"})
+
+        access_token = token_response["access_token"]
+
+        # GENERATE PASSWORD
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+        password = base64.b64encode(
+            (shortcode + passkey + timestamp).encode()
+        ).decode()
+
+
+        # STK PUSH URL (LIVE)
+        stk_url = "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+
+
+        payload = {
+
+            "BusinessShortCode": shortcode,
+            "Password": password,
+            "Timestamp": timestamp,
+            "TransactionType": "CustomerBuyGoodsOnline",
+
+            "Amount": 150,
+
+            "PartyA": phone,
+            "PartyB": "8583554",
+
+            "PhoneNumber": phone,
+
+            "CallBackURL": os.environ.get("MPESA_CALLBACK_URL"),
+
+            "AccountReference": "EARLYBIRDTECHSOLUTIONS",
+
+            "TransactionDesc": "KUCCPS Cluster Calculator"
+        }
+
+
+        headers = {
+            "Authorization": "Bearer " + access_token
+        }
+
+
+        response = requests.post(stk_url, json=payload, headers=headers)
+
+        print("MPESA RESPONSE:", response.text)
+        print("PAYLOAD:", payload)
+
+        res = response.json()
+
+        checkout_id = res.get("CheckoutRequestID")
+
+        if checkout_id:
+
+            conn = sqlite3.connect("kuccps.db")
+            cur = conn.cursor()
+
+            cur.execute("""
+            INSERT INTO payments (phone,email,checkout_id,status)
+            VALUES (?,?,?,?)
+            """,(phone,email,checkout_id,"pending"))
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "status":"success",
+                "checkout_id": checkout_id
+            })
+
+        if res.get("ResponseCode") == "0":
+            return jsonify({
+                "status": "success",
+                "message": "STK Push sent. Check your phone"
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": res
+            })
+
+    except Exception as e:
+
+        print("MPESA ERROR:", e)
+
+        return jsonify({
+            "status": "error",
+            "message": "Payment request failed"
+        })
+
+@app.route("/mpesa_callback", methods=["POST"])
+def mpesa_callback():
+
+    data = request.json
+    print("MPESA CALLBACK RECEIVED:", data)
+
+    body = data["Body"]["stkCallback"]
+
+    checkout_id = body["CheckoutRequestID"]
+    result_code = body["ResultCode"]
+
+    conn = sqlite3.connect("kuccps.db")
+    cur = conn.cursor()
+
+    if result_code == 0:
+
+        cur.execute("""
+        UPDATE payments
+        SET status='success'
+        WHERE checkout_id=?
+        """,(checkout_id,))
+
+    else:
+
+        cur.execute("""
+        UPDATE payments
+        SET status='failed'
+        WHERE checkout_id=?
+        """,(checkout_id,))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ResultCode":0,"ResultDesc":"Accepted"})
+
+@app.route("/check_payment/<checkout_id>")
+def check_payment(checkout_id):
+
+    conn = sqlite3.connect("kuccps.db")
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT status,email FROM payments
+        WHERE checkout_id=?
+    """,(checkout_id,))
+
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"status":"pending"})
+
+    status,email = row
+
+    # PAYMENT SUCCESS
+    if status == "success":
+
+        # load the user's saved results
+        conn = sqlite3.connect("kuccps.db")
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT full_results,access_code
+            FROM calculated_users
+            WHERE name=?
+        """,(email,))
+
+        user = cur.fetchone()
+        conn.close()
+
+        if user:
+
+            results = json.loads(user[0])
+
+            session["results"] = results
+            session["access_code"] = user[1]
+
+            return jsonify({
+                "status":"success",
+                "redirect":"/results"
+            })
+
+    return jsonify({"status":status})
+
+@app.route("/fetch_access", methods=["POST"])
+def fetch_access():
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"access_code": None})
+
+    email = data.get("email")
+
+    conn = sqlite3.connect("kuccps.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT access_code FROM calculated_users WHERE name=?",
+        (email,)
     )
 
-
-# Delete Calculated User
-@app.route("/admin/delete-user/<int:user_id>")
-@admin_required
-def delete_user(user_id):
-
-    conn = db()
-    cur = conn.cursor()
-
-    cur.execute("DELETE FROM calculated_users WHERE id=?", (user_id,))
-    conn.commit()
-
+    result = cursor.fetchone()
     conn.close()
 
-    return redirect(url_for("admin_dashboard"))
-
+    if result:
+        return jsonify({"access_code": result[0]})
+    else:
+        return jsonify({"access_code": None})
 
 # =========================
 # RUN APP
 # =========================
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)

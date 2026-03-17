@@ -41,7 +41,7 @@ font-weight:bold;
 color:#003366;
 }
 
-input{
+input, textarea{
 width:100%;
 padding:12px;
 margin-top:5px;
@@ -86,6 +86,7 @@ padding:30px;
 .tab-buttons{
 display:flex;
 border-bottom:2px solid #ccc;
+margin-bottom:10px;
 }
 
 .tab-buttons button{
@@ -95,6 +96,7 @@ padding:12px 25px;
 cursor:pointer;
 font-weight:bold;
 color:#003366;
+width:auto;
 }
 
 .tab-buttons button.active{
@@ -104,7 +106,7 @@ color:white;
 
 .tab-content{
 display:none;
-padding:20px 0;
+padding:10px 0;
 }
 
 .tab-content.active{
@@ -138,13 +140,16 @@ overflow-x:auto;
 }
 
 table{
-width:100%;
+width:auto;
 border-collapse:collapse;
+font-size:12px;
 }
 
 th,td{
-padding:10px;
-border:1px solid #ccc;
+padding:4px 6px;
+border:1px solid #ddd;
+font-size:12px;
+white-space:nowrap;
 }
 
 th{
@@ -156,6 +161,23 @@ tr:nth-child(even){
 background:#f4f6f8;
 }
 
+.toggle-btn{
+background:#003366;
+color:white;
+padding:10px 15px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+width:auto;
+}
+
+.small-btn{
+width:auto;
+padding:6px 10px;
+font-size:12px;
+margin-top:0;
+}
+
 </style>
 </head>
 
@@ -164,7 +186,6 @@ background:#f4f6f8;
 {% if login %}
 
 <div class="login-wrapper">
-
 <div class="login-container">
 
 <h2>Admin Login</h2>
@@ -172,6 +193,12 @@ background:#f4f6f8;
 {% if error %}
 <div class="error">{{ error }}</div>
 {% endif %}
+
+<a href="{{ url_for('calculator') }}">
+<button type="button" style="margin-bottom:15px;background:#003366;">
+← Back to Cluster Calculator
+</button>
+</a>
 
 <form method="POST" action="/admin">
 
@@ -186,18 +213,19 @@ background:#f4f6f8;
 </form>
 
 </div>
-
 </div>
 
 {% else %}
 
 <div class="dashboard-page">
-
 <div class="container">
 
 <h2>Admin Dashboard</h2>
 
-<p><strong>Signed in as:</strong> {{ current_admin.name }} ({{ current_admin.email|mask_email }})</p>
+<p>
+<strong>Signed in as:</strong>
+{{ current_admin.name }} ({{ current_admin.email|mask_email }})
+</p>
 
 <a href="/logout">Logout</a>
 
@@ -244,7 +272,11 @@ background:#f4f6f8;
 
 <div class="card">
 
-<h3>Create Admin</h3>
+<button id="toggle-create-admin" class="toggle-btn">
+Create Admin
+</button>
+
+<div id="create-admin-form" style="display:none;margin-top:15px;">
 
 <form method="post" action="/admin/create">
 
@@ -260,6 +292,8 @@ background:#f4f6f8;
 <button type="submit">Add Admin</button>
 
 </form>
+
+</div>
 
 </div>
 
@@ -289,7 +323,9 @@ background:#f4f6f8;
 
 <td>
 <a href="/admin/delete-admin/{{ admin.id }}">
-<button style="background:red;color:white;">Delete</button>
+<button class="small-btn" style="background:red;color:white;">
+Delete
+</button>
 </a>
 </td>
 
@@ -303,132 +339,333 @@ background:#f4f6f8;
 
 </div>
 
-</div>
-
-<!-- COURSES -->
+</div>   <!-- ADD THIS LINE -->
 
 <div id="courses" class="tab-content">
 
-```
-<!-- Add Single Course -->
-<div class="card file-upload">
-    <h3>Add Single Course</h3>
+  <div class="card">
+    <!-- COURSES DISPLAY PER CLUSTER -->
 
-    <form class="admin-form" method="post" action="/admin/add-course">
+<h3>Courses By Cluster</h3>
 
-        <label>Cluster</label>
-        <input type="text" name="cluster" placeholder="e.g. 2" required>
+{% for cluster, courses in courses.items() %}
 
-        <label>Course Name</label>
-        <input type="text" name="name" placeholder="BACHELOR OF COMMERCE" required>
+<button class="toggle-btn" onclick="toggleCluster('{{ cluster }}')" style="margin-bottom:10px;">
+Cluster {{ cluster }}
+</button>
 
-        <label>Minimum Subject Requirements</label>
-        <textarea 
-            name="requirements"
-            placeholder="Mathematics: C+  English/Kiswahili: B  Biology: C+  Chemistry: C+"
-            rows="4"
-            style="width:100%; padding:8px; border-radius:6px; border:1px solid #ccc;">
-        </textarea>
+<div id="cluster-{{ cluster }}" style="display:none;margin-bottom:15px;">
 
-        <label>University</label>
-        <input type="text" name="university" placeholder="University of Nairobi" required>
+<table>
 
-        <label>Course Code</label>
-        <input type="text" name="course_code" placeholder="1263134" required>
+<thead>
+<tr>
+<th>#</th>
+<th>Course</th>
+<th>Minimum Requirements</th>
+<th>View Universities</th>
+<th>Actions</th>
+</tr>
+</thead>
 
-        <label>Cutoff Points</label>
-        <input type="text" name="cutoff" placeholder="32.613" required>
+<tbody>
 
-        <button style="padding:5px 10px; font-size:13px;">Save Course Entry</button>
+{% for course in courses %}
 
-    </form>
+<tr>
+
+<td>{{ loop.index }}</td>
+
+<td>{{ course.name }}</td>
+
+<td>
+
+{% if course.requirements %}
+
+<pre style="margin:0;font-family:inherit;">{{ course.requirements }}</pre>
+
+{% else %}
+
+No requirements
+
+{% endif %}
+
+</td>
+
+<td>
+<button class="small-btn" onclick="toggleCourse('{{ course.id }}')">
+View
+</button>
+</td>
+
+<td>
+
+<button class="small-btn" 
+onclick="toggleEdit('{{ course.id }}')" 
+style="background:#0066cc;color:white;">
+Edit
+</button>
+
+<a href="/admin/delete-course/{{ course.id }}">
+<button class="small-btn" style="background:#cc0000;color:white;">
+Delete
+</button>
+</a>
+
+</td>
+
+</tr>
+
+<tr id="course-{{ course.id }}" style="display:none;background:#fafafa;">
+
+<td colspan="5">
+
+<table style="margin-top:10px;">
+
+<thead>
+<tr>
+<th>#</th>
+<th>University</th>
+<th>Course Code</th>
+<th>Cutoff</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for u in course.universities %}
+
+<tr>
+<td>{{ loop.index }}</td>
+<td>{{ u.name }}</td>
+<td>{{ u.course_code }}</td>
+<td>{{ u.cutoff }}</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</td>
+</tr>
+
+<tr id="edit-{{ course.id }}" style="display:none;background:#fff8e6;">
+<td colspan="5">
+
+<form method="post" action="/admin/edit-course/{{ course.id }}">
+
+<label>Course Name</label>
+<input type="text" name="name" value="{{ course.name }}" required>
+
+<label>Minimum Requirements</label>
+<textarea name="requirements" rows="5">{{ course.requirements }}</textarea>
+
+<label>Universities (one per line)</label>
+<textarea name="universities" rows="4"
+placeholder="University of Nairobi
+Kenyatta University
+Moi University"></textarea>
+
+<label>Course Codes (one per line)</label>
+<textarea name="course_codes" rows="4"
+placeholder="1263134
+1265152
+1267811"></textarea>
+
+<label>Cutoffs (one per line)</label>
+<textarea name="cutoffs" rows="4"
+placeholder="39.21
+38.55
+37.10"></textarea>
+
+<button type="submit" style="margin-top:10px;background:#006600;color:white;">
+Save Changes
+</button>
+
+</form>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
 </div>
 
+{% endfor %}
 
-<!-- Upload Courses CSV -->
-<div class="card file-upload">
+</div>
 
-    <h3>Upload Courses CSV</h3>
+    <!-- Main Add Course Button -->
+    <button id="show-add-course-btn" 
+            onclick="toggleAddCourse()" 
+            style="padding:10px 15px; background:#003366;color:white;border:none;border-radius:6px;cursor:pointer;">
+      Add Course
+    </button>
 
-    <form method="post" action="/admin/upload-csv" enctype="multipart/form-data">
+    <!-- Add Course Container (hidden by default) -->
+    <div id="add-course-container" style="display:none; margin-top:15px;">
 
-        <input type="file" name="courses_csv" required>
+      <!-- Tabs for Single / CSV -->
+      <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <button onclick="showCourseForm('single')" id="btn-single" style="padding:5px 10px; cursor:pointer;">Add Single Course</button>
+        <button onclick="showCourseForm('csv')" id="btn-csv" style="padding:5px 10px; cursor:pointer;">Upload Courses CSV</button>
+      </div>
 
-        <button style="padding:5px 10px; font-size:13px;">
-            Replace With Selected CSV
-        </button>
+      <!-- Single Course Form -->
+      <form id="single-course-form" method="post" action="/admin/add-course" style="display:none;">
 
-        <button type="button"
-                onclick="window.location.href='/admin/upload-bundled'"
-                style="padding:5px 10px; font-size:13px;">
+      <label>Cluster</label>
+      <select name="cluster" required>
+      {% for i in range(1,21) %}
+      <option value="{{i}}">Cluster {{i}}</option>
+      {% endfor %}
+      </select>
+
+      <label>Course Name</label>
+      <input type="text" name="name" placeholder="BACHELOR OF SCIENCE (METEOROLOGY)" required>
+
+      <label>Minimum Requirements</label>
+      <textarea name="requirements" rows="5"
+      placeholder="Mathematics: C+
+      Physics: C+
+      Chemistry: C+
+      English/Kiswahili: C+"></textarea>
+
+      <label>Universities (one per line)</label>
+      <textarea name="universities" rows="5"
+      placeholder="University of Nairobi
+      Kenyatta University
+      Moi University"></textarea>
+
+      <label>Course Codes (one per line)</label>
+      <textarea name="course_codes" rows="5"
+      placeholder="1263134
+      1265152
+      1267811"></textarea>
+
+      <label>Cutoffs (one per line)</label>
+      <textarea name="cutoffs" rows="5"
+      placeholder="39.21
+      38.55
+      37.10"></textarea>
+
+      <button type="submit" style="padding:5px 10px; margin-top:10px;">
+      Save Course
+      </button>
+
+      </form>
+      </div>
+
+      <!-- Upload Courses CSV -->
+      <div id="csv-course-form" style="display:none; border:1px solid #ccc; padding:15px; border-radius:6px;">
+        <form method="post" action="/admin/upload-csv" enctype="multipart/form-data">
+
+          <input type="file" name="courses_csv" required>
+
+          <button type="submit" style="padding:5px 10px; margin-top:5px;">Replace With Selected CSV</button>
+
+          <button type="button" 
+                  onclick="window.location.href='/admin/upload-bundled'" 
+                  style="padding:5px 10px; margin-top:5px;">
             Replace With Bundled courses.csv
-        </button>
+          </button>
 
-    </form>
+        </form>
+      </div>
 
+    </div>
+  </div>
 </div>
 
+</div>   <!-- ADD THIS LINE (closes courses tab) -->
 
-<!-- COURSES TABLE -->
-<div class="card table-container">
+<script>
 
-    <h3>All Courses</h3>
+  /* CLUSTER TOGGLE (ONLY ONE OPEN) */
 
-    <table>
+function toggleCluster(cluster){
 
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Course Name</th>
-                <th>Cluster</th>
-                <th>Course Code</th>
-                <th>Cutoff</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
+const section = document.getElementById("cluster-" + cluster);
+const clusters = document.querySelectorAll("[id^='cluster-']");
 
-        <tbody>
+/* if already open → close it */
+if(section.style.display === "block"){
+section.style.display = "none";
+return;
+}
 
-            {% for course in courses %}
+/* close all clusters */
+clusters.forEach(c=>{
+c.style.display="none";
+});
 
-            <tr>
+/* open selected */
+section.style.display="block";
 
-                <td>{{ course[0] }}</td>
-<td>{{ course[1] }}</td>
-<td>{{ course[2] }}</td>
-<td>{{ course[4] }}</td>
-<td>{{ course[5] }}</td>
-
-                <td>
-
-                    <a href="/admin/edit-course/{{ course.id }}">
-                        <button style="padding:4px 8px; font-size:12px;">
-                            Edit
-                        </button>
-                    </a>
-
-                    <a href="/admin/delete-course/{{ course.id }}">
-                        <button style="background:#cc0000;color:white;padding:4px 8px;font-size:12px;">
-                            Delete
-                        </button>
-                    </a>
-
-                </td>
-
-            </tr>
-
-            {% endfor %}
-
-        </tbody>
-
-    </table>
-
-</div>
-```
-
-</div>
+}
 
 
+/* COURSE TOGGLE (ONLY ONE OPEN) */
+
+function toggleCourse(courseId){
+
+const views=document.querySelectorAll("[id^='course-']");
+const edits=document.querySelectorAll("[id^='edit-']");
+
+views.forEach(v=>v.style.display="none");
+edits.forEach(e=>e.style.display="none");
+
+const row=document.getElementById("course-"+courseId);
+
+row.style.display="table-row";
+
+}
+
+function toggleEdit(courseId){
+
+const views=document.querySelectorAll("[id^='course-']");
+const edits=document.querySelectorAll("[id^='edit-']");
+
+views.forEach(v=>v.style.display="none");
+edits.forEach(e=>e.style.display="none");
+
+const row=document.getElementById("edit-"+courseId);
+
+row.style.display="table-row";
+
+}
+
+  // Toggle the whole Add Course container
+  function toggleAddCourse() {
+    const container = document.getElementById("add-course-container");
+    container.style.display = container.style.display === "none" ? "block" : "none";
+
+    // Hide both forms initially
+    document.getElementById("single-course-form").style.display = "none";
+    document.getElementById("csv-course-form").style.display = "none";
+  }
+
+  // Show single or CSV form, hide the other
+  function showCourseForm(type) {
+    const singleForm = document.getElementById("single-course-form");
+    const csvForm = document.getElementById("csv-course-form");
+
+    if(type === "single") {
+      singleForm.style.display = "block";
+      csvForm.style.display = "none";
+    } else {
+      csvForm.style.display = "block";
+      singleForm.style.display = "none";
+    }
+  }
+</script>
 
 <!-- CALCULATED USERS -->
 
@@ -437,15 +674,38 @@ background:#f4f6f8;
 <div class="card table-container">
 
 <h3>Calculated Users</h3>
+<div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;">
 
-<div style="margin-bottom:15px;">
+<input type="text"
+id="user-search"
+placeholder="Search Access Code or Name"
+style="padding:10px;border-radius:6px;border:1px solid #ccc;min-width:250px;">
 
-<button onclick="selectAllUsers()">Select All</button>
-<button onclick="deleteSelected()">Delete Selected</button>
+<button onclick="searchUsers()" style="width:auto;background:#003366;color:white;">
+Search
+</button>
+
+<button onclick="resetSearch()" style="width:auto;background:#777;color:white;">
+Reset
+</button>
 
 </div>
 
-<table>
+<div id="user-actions" style="margin-bottom:15px;display:none;">
+
+<button onclick="selectAllUsers()" style="width:auto;">
+Select All
+</button>
+
+<button id="delete-selected-btn"
+onclick="deleteSelected()"
+style="display:none;width:auto;background:#cc0000;color:white;">
+Delete Selected
+</button>
+
+</div>
+
+<table id="users-table">
 
 <thead>
 <tr>
@@ -453,8 +713,6 @@ background:#f4f6f8;
 <th>Date</th>
 <th>Access Code</th>
 <th>Name</th>
-<th>Best Cluster</th>
-<th>Top 3 Points</th>
 <th>Actions</th>
 </tr>
 </thead>
@@ -466,23 +724,45 @@ background:#f4f6f8;
 <tr>
 
 <td>
-<input type="checkbox" class="user-checkbox" value="{{ user.id }}">
+<input type="checkbox"
+class="user-checkbox"
+value="{{ user.id }}"
+onchange="toggleActions()">
 </td>
 
 <td>{{ user.date }}</td>
-<td>{{ user.access_code }}</td>
-<td>{{ user.name }}</td>
-<td>{{ user.best_cluster }}</td>
-<td>{{ user.top3_points }}</td>
+
+<td class="access">{{ user.access_code }}</td>
+
+<td class="name">{{ user.name }}</td>
+
 
 <td>
 
-<a href="/admin/view-user/{{ user.id }}">
-<button>View</button>
-</a>
+<script>
+  function showClusters(userId) {
+    // Toggle modal
+    const modal = document.getElementById(`cluster-modal-${userId}`);
+    if (modal.style.display === "none") {
+      modal.style.display = "table-row";
+    } else {
+      modal.style.display = "none";
+    }
+
+    // Hide when clicking anywhere outside
+    document.addEventListener('click', function hideOutside(event) {
+      if (!modal.contains(event.target) && event.target.tagName !== 'BUTTON') {
+        modal.style.display = "none";
+        document.removeEventListener('click', hideOutside);
+      }
+    });
+  }
+</script>
 
 <a href="/admin/delete-user/{{ user.id }}">
-<button style="background:#cc0000;color:white;">Delete</button>
+<button class="small-btn" style="background:#cc0000;color:white;">
+Delete
+</button>
 </a>
 
 </td>
@@ -500,29 +780,139 @@ background:#f4f6f8;
 </div>
 
 </div>
-
-</div>
-
 </div>
 
 {% endif %}
 
 <script>
 
+/* TOGGLE CREATE ADMIN FORM */
+
+document.addEventListener("DOMContentLoaded",function(){
+
+let toggleBtn=document.getElementById("toggle-create-admin");
+
+if(toggleBtn){
+toggleBtn.onclick=function(){
+
+let form=document.getElementById("create-admin-form");
+
+if(form.style.display==="none"){
+form.style.display="block";
+}else{
+form.style.display="none";
+}
+
+};
+}
+
+});
+
+/* TAB SWITCHING */
+
 function openTab(evt,tabName){
 
 let tabs=document.getElementsByClassName("tab-content");
+
 for(let i=0;i<tabs.length;i++){
 tabs[i].classList.remove("active");
 }
 
-let buttons=document.getElementsByClassName("tab-buttons")[0].children;
-for(let i=0;i<buttons.length;i++){
-buttons[i].classList.remove("active");
-}
+let buttons=document.querySelectorAll(".tab-buttons button");
+
+buttons.forEach(btn=>btn.classList.remove("active"));
 
 document.getElementById(tabName).classList.add("active");
 evt.currentTarget.classList.add("active");
+
+}
+
+/* SEARCH USERS */
+
+function searchUsers(){
+
+const input=document.getElementById("user-search").value.toLowerCase();
+const rows=document.querySelectorAll("#users-table tbody tr");
+
+rows.forEach(row=>{
+
+const access=row.querySelector(".access").textContent.toLowerCase();
+const name=row.querySelector(".name").textContent.toLowerCase();
+
+if(access.includes(input) || name.includes(input)){
+row.style.display="";
+}else{
+row.style.display="none";
+}
+
+});
+
+}
+
+/* RESET SEARCH */
+
+function resetSearch(){
+
+document.getElementById("user-search").value="";
+
+const rows=document.querySelectorAll("#users-table tbody tr");
+
+rows.forEach(row=>{
+row.style.display="";
+});
+
+}
+
+/* TOGGLE ACTION BUTTONS */
+
+function toggleActions(){
+
+const checkboxes=document.querySelectorAll(".user-checkbox");
+const actionsDiv=document.getElementById("user-actions");
+const deleteBtn=document.getElementById("delete-selected-btn");
+
+let checkedCount=0;
+
+checkboxes.forEach(cb=>{
+if(cb.checked) checkedCount++;
+});
+
+actionsDiv.style.display=checkedCount>0?"block":"none";
+deleteBtn.style.display=checkedCount>1?"inline-block":"none";
+
+}
+
+/* SELECT ALL USERS */
+
+function selectAllUsers(){
+
+const checkboxes=document.querySelectorAll(".user-checkbox");
+const allChecked=Array.from(checkboxes).every(cb=>cb.checked);
+
+checkboxes.forEach(cb=>cb.checked=!allChecked);
+
+toggleActions();
+
+}
+
+/* DELETE SELECTED USERS */
+
+function deleteSelected(){
+
+const checkboxes=document.querySelectorAll(".user-checkbox:checked");
+const ids=Array.from(checkboxes).map(cb=>cb.value);
+
+if(ids.length===0) return;
+
+if(!confirm("Are you sure you want to delete selected users?")) return;
+
+ids.forEach(id=>{
+
+fetch(`/admin/delete-user/${id}`)
+.then(()=>window.location.reload())
+.catch(err=>console.error(err));
+
+});
 
 }
 

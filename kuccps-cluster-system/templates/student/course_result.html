@@ -1,54 +1,304 @@
-<h2>{{ course }}</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Course Qualification Result</title>
+
+<style>
+
+body{
+font-family:'Segoe UI', Arial, sans-serif;
+background:#f4f7fb;
+margin:0;
+padding:40px;
+text-align:center;
+overflow-x:hidden;
+}
+
+h1{
+color:#003366;
+}
+
+.container{
+max-width:1000px;
+margin:auto;
+background:white;
+padding:30px;
+border-radius:10px;
+box-shadow:0 5px 15px rgba(0,0,0,0.15);
+position:relative;
+}
+
+h2{
+color:#003366;
+}
+
+h3{
+color:#003366;
+margin-top:30px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:15px;
+font-size:15px;
+table-layout:fixed;
+}
+
+th{
+background:#003366;
+color:white;
+padding:10px;
+text-align:left;
+}
+
+td{
+border:1px solid #ddd;
+padding:8px;
+text-align:left;
+}
+
+th:nth-child(1), td:nth-child(1){width:5%;}
+th:nth-child(2), td:nth-child(2){width:18%;}
+th:nth-child(3), td:nth-child(3){width:47%;}
+th:nth-child(4), td:nth-child(4){width:15%;}
+th:nth-child(5), td:nth-child(5){width:15%;}
+
+tr:nth-child(even){
+background:#f9f9f9;
+}
+
+.good{
+color:green;
+font-weight:bold;
+}
+
+.bad{
+color:red;
+font-weight:bold;
+}
+
+.buttons{
+margin-top:30px;
+}
+
+.buttons a{
+text-decoration:none;
+padding:10px 20px;
+border-radius:8px;
+margin:10px;
+font-weight:bold;
+display:inline-block;
+}
+
+.back{
+background:#003366;
+color:white;
+}
+
+.home{
+background:#ff4d4d;
+color:white;
+}
+
+.pdf{
+background:#009688;
+color:white;
+}
+
+/* SIDE MESSAGE STYLE */
+
+.side-left,
+.side-right{
+position:fixed;
+top:0;
+bottom:0;
+width:70px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:18px;
+font-weight:bold;
+color:#003366;
+pointer-events:none;
+opacity:0;
+transition:opacity 2s ease-in-out;
+}
+
+.side-left{
+left:0;
+}
+
+.side-right{
+right:0;
+}
+
+.side-text{
+writing-mode:vertical-rl;
+text-orientation:mixed;
+}
+
+/* blinking effect */
+
+@keyframes fadeLeft{
+0%{opacity:1;}
+50%{opacity:0;}
+100%{opacity:1;}
+}
+
+@keyframes fadeRight{
+0%{opacity:0;}
+50%{opacity:1;}
+100%{opacity:0;}
+}
+
+.side-left{
+animation:fadeLeft 8s infinite;
+}
+
+.side-right{
+animation:fadeRight 8s infinite;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="side-left">
+<div class="side-text">
+🌙 ⭐ ✨ Thanks for using Early Bird Course Finder 🎓  
+Welcome again. For inquiries call or WhatsApp 0759080437 ⭐ 🌙
+</div>
+</div>
+
+<div class="side-right">
+<div class="side-text">
+🌙 ⭐ ✨ Thanks for using Early Bird Course Finder 🎓  
+Welcome again. For inquiries call or WhatsApp 0759080437 ⭐ 🌙
+</div>
+</div>
+
+<div class="container">
+
+<h1>{{ course }}</h1>
+
 
 <p><strong>Cluster:</strong> {{ cluster }}</p>
-<p><strong>Cluster Points:</strong> {{ points }}</p>
+<p><strong>Cluster Points:</strong> {{ "%.3f"|format(points) }}</p>
 
 <hr>
 
 {% if subject_check.passed %}
-    <h3>✅ Subject Requirements Met</h3>
 
-    <h4>Qualified Universities</h4>
-    {% if qualified %}
-        <ul>
-        {% for u, c in qualified %}
-            <li>{{ u }} (Cutoff: {{ c }})</li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>❌ No university qualified</p>
-    {% endif %}
+<h3 class="good">✅ Subject Requirements Met</h3>
 
-    <h4>Not Qualified Universities</h4>
-    {% if not_qualified %}
-        <ul>
-        {% for u, c in not_qualified %}
-            <li>{{ u }} (Cutoff: {{ c }})</li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>All universities qualified 🎉</p>
-    {% endif %}
+<h3>Qualified Universities</h3>
+
+{% if qualified %}
+
+<table>
+<tr>
+<th>#</th>
+<th>Course Code</th>
+<th>University</th>
+<th>Cutoff</th>
+<th>Margin</th>
+</tr>
+
+{% for row in qualified %}
+<tr>
+<td>{{ loop.index }}</td>
+<td>{{ row.course_code }}</td>
+<td>{{ row.university or "Unknown University" }}</td>
+<td>{{ "%.3f"|format(row.cutoff) }}</td>
+<td class="good">{{ row.margin }}</td>
+</tr>
+{% endfor %}
+
+</table>
 
 {% else %}
-    <h3>❌ Subject Requirements Not Met</h3>
-    <ul>
-    {% for f in subject_check.failed %}
-        <li>
-            {{ f.subject }} required ≥ {{ f.required }}
-            {% if f.student_subject %}
-                (you had {{ f.student_subject }}: {{ f.student_grade }})
-            {% else %}
-                (subject not done)
-            {% endif %}
-        </li>
-    {% endfor %}
-    </ul>
+<p class="bad">❌ No university qualified</p>
+{% endif %}
+
+<h3>Not Qualified Universities</h3>
+
+{% if not_qualified %}
+
+<table>
+<tr>
+<th>#</th>
+<th>Course Code</th>
+<th>University</th>
+<th>Cutoff</th>
+<th>Margin</th>
+</tr>
+
+{% for row in not_qualified %}
+<tr>
+<td>{{ loop.index }}</td>
+<td>{{ row.course_code }}</td>
+<td>{{ row.university or "Unknown University" }}</td>
+<td>{{ "%.3f"|format(row.cutoff) }}</td>
+<td class="bad">{{ row.margin }}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+{% else %}
+<p class="good">All universities qualified 🎉</p>
+{% endif %}
+
+{% else %}
+
+<h3 class="bad">❌ Subject Requirements Not Met</h3>
+
+<table>
+<tr>
+<th>#</th>
+<th>Subject</th>
+<th>Required Grade</th>
+<th>Your Subject</th>
+<th>Your Grade</th>
+</tr>
+
+{% for f in subject_check.failed %}
+<tr>
+<td>{{ loop.index }}</td>
+<td>{{ f.subject }}</td>
+<td>{{ f.required }}</td>
+
+{% if f.student_subject %}
+<td>{{ f.student_subject }}</td>
+<td>{{ f.student_grade }}</td>
+{% else %}
+<td colspan="2">Subject not done</td>
+{% endif %}
+
+</tr>
+{% endfor %}
+</table>
+
 {% endif %}
 
 <hr>
 
-<div style="margin-top:20px;">
-    <a href="/results" style="margin-right:15px;">🔙 Back to Results</a>
-    <a href="/">🏠 Back Home</a>
+<div class="buttons">
+
+<a class="back" href="/results">⬅ Back to Cluster Results</a>
+
+<a class="home" href="/">🏠 Home</a>
+
+<a class="pdf" href="/download-course-pdf?course={{ course }}&cluster={{ cluster }}&points={{ points }}">
+📄 Download PDF
+</a>
+
 </div>
+
+</div>
+
+</body>
+</html>
