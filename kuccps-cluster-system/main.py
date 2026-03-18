@@ -26,7 +26,7 @@ import os
 
 load_dotenv()
 
-app = Flask(__name__, static_url_path="/earlybird/static")
+app = Flask(__name__)
 app.secret_key = "kuccps-admin-secret"
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -1298,7 +1298,7 @@ def stkpush():
 
             "PhoneNumber": phone,
 
-            "CallBackURL": "https://postinfective-unpraying-noelle.ngrok-free.dev/mpesa_callback",
+            "CallBackURL": "https://clusterpointscalculation.co.ke/app/mpesa_callback",
 
             "AccountReference": "EARLYBIRDTECHSOLUTIONS",
 
