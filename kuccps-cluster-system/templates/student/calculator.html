@@ -974,7 +974,7 @@ style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;"
 
 <button id="stkBtn" onclick="sendSTK()"
 style="background:#28a745;color:white;padding:10px 15px;border:none;border-radius:8px;">
-Send STK Push
+Pay
 </button>
 
 <button onclick="closePayment()" style="background:#999;color:white;padding:10px 15px;border:none;border-radius:8px;">
@@ -1085,6 +1085,8 @@ font-size:16px;
 
 <script>
 
+let paymentInterval = null;
+
 function showNotice(message){
 
 const popup = document.getElementById("noticePopup");
@@ -1191,7 +1193,12 @@ document.getElementById("fetchModal").style.display="none";
 
 function checkPayment(checkout){
 
-let interval=setInterval(function(){
+// 🔥 STOP any existing interval first
+if(paymentInterval){
+    clearInterval(paymentInterval);
+}
+
+paymentInterval = setInterval(function(){
 
 fetch("/check_payment/"+checkout)
 .then(res=>res.json())
@@ -1199,23 +1206,21 @@ fetch("/check_payment/"+checkout)
 
 if(data.status==="success"){
 
-clearInterval(interval);
+clearInterval(paymentInterval);
 
 document.getElementById("stkStatus").innerText="Payment confirmed";
 
 document.querySelector(".calculate-btn").innerText="Payment Confirmed";
 
 setTimeout(function(){
-
 document.querySelector("form").submit();
-
 },1500);
 
 }
 
 if(data.status==="failed"){
 
-clearInterval(interval);
+clearInterval(paymentInterval);
 
 document.getElementById("stkStatus").innerText="Payment failed";
 
@@ -1225,13 +1230,17 @@ document.getElementById("stkStatus").innerText="Payment failed";
 
 },3000);
 
+// 🔥 AUTO STOP AFTER 1 MINUTE
+setTimeout(function(){
+    clearInterval(paymentInterval);
+    document.getElementById("stkStatus").innerText="Session expired. Try again.";
+},120000);
+
 }
 
 function sendSTK(){
 
 document.getElementById("stkBtn").disabled = true;
-
-document.querySelector("#paymentModal button").disabled = true;
 
 document.querySelector(".calculate-btn").innerText="Processing Payment...";
 

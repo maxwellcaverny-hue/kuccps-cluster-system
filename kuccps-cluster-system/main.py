@@ -26,8 +26,8 @@ import os
 
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET")
+app = Flask(__name__, static_url_path="/earlybird/static")
+app.secret_key = "kuccps-admin-secret"
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -35,12 +35,12 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 # =========================
 # MPESA CONFIG
 # =========================
-consumer_key = os.environ.get("MPESA_CONSUMER_KEY")
-consumer_secret = os.environ.get("MPESA_CONSUMER_SECRET")
+consumer_key = "uDRO6DrbBALnrmGGirOFe4GNfAAoXALeGvr5Kds66AcDAD5i"
+consumer_secret = "mpApxueWEpYhE9xedaGkta7k83fLpoEuPiNES6bhMaPi3rHiQaSWXdlsJRErcAcR"
 
 shortcode = "9514880"
 
-passkey = os.environ.get("MPESA_PASSKEY")
+passkey = "12775367f40cd545f34d5ca77101622bf7c572fb3c6c287fef506ccea269e251"
 
 # =========================
 # DATABASE SETUP
@@ -53,7 +53,7 @@ def generate_access_code(length=8):
 
 def send_cluster_email(to_email, access_code, cluster_points):
     sender = "earlybirdonlinecyber@gmail.com"
-    password = os.environ.get("EMAIL_PASSWORD")
+    password = "kbejotxdnppjzbeb"
 
     subject = "Your KUCCPS Cluster Calculation is Ready"
     body = f"""Hello,
@@ -915,7 +915,6 @@ def delete_user(user_id):
     cur.execute("DELETE FROM calculated_users WHERE id=?", (user_id,))
     conn.commit()
     conn.close()
-    flash("✅ User deleted successfully!")
     return redirect(url_for("admin_dashboard", show="calculated_users"))
 
 @app.route("/admin/edit-course/<int:course_id>", methods=["POST"])
@@ -1299,7 +1298,7 @@ def stkpush():
 
             "PhoneNumber": phone,
 
-            "CallBackURL": os.environ.get("MPESA_CALLBACK_URL"),
+            "CallBackURL": "https://postinfective-unpraying-noelle.ngrok-free.dev/mpesa_callback",
 
             "AccountReference": "EARLYBIRDTECHSOLUTIONS",
 
