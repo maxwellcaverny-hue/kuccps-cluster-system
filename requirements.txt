@@ -24,6 +24,7 @@ Flask==3.1.2
 fqdn==1.5.1
 gitdb==4.0.12
 GitPython==3.1.45
+gunicorn==25.1.0
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
@@ -64,6 +65,7 @@ packaging==25.0
 pandocfilters==1.5.1
 parso==0.8.5
 pexpect==4.9.0
+pillow==12.1.1
 platformdirs==4.5.0
 prometheus_client==0.23.1
 prompt_toolkit==3.0.52
@@ -73,10 +75,12 @@ pure_eval==0.2.3
 pycparser==2.23
 Pygments==2.19.2
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
 python-json-logger==4.0.0
 PyYAML==6.0.3
 pyzmq==27.1.0
 referencing==0.37.0
+reportlab==4.4.10
 requests==2.32.5
 rfc3339-validator==0.1.4
 rfc3986-validator==0.1.1
@@ -102,3 +106,4 @@ webcolors==25.10.0
 webencodings==0.5.1
 websocket-client==1.9.0
 Werkzeug==3.1.5
+gunicorn
