@@ -1298,7 +1298,7 @@ def stkpush():
 
             "PhoneNumber": phone,
 
-            "CallBackURL": "https://kuccps-cluster-system.vercel.app/mpesa_callback",
+            "CallBackURL": "https://kuccps-cluster-system-1.onrender.com/mpesa_callback",
 
             "AccountReference": "EARLYBIRDTECHSOLUTIONS",
 
