@@ -27,7 +27,7 @@ import os
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY")
+app.secret_key = "kuccps-admin-secret"
 app.config["SESSION_COOKIE_SECURE"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -35,12 +35,12 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 # =========================
 # MPESA CONFIG
 # =========================
-consumer_key = os.getenv("CONSUMER_KEY")
-consumer_secret = os.getenv("CONSUMER_SECRET")
+consumer_key = "uDRO6DrbBALnrmGGirOFe4GNfAAoXALeGvr5Kds66AcDAD5i"
+consumer_secret = "mpApxueWEpYhE9xedaGkta7k83fLpoEuPiNES6bhMaPi3rHiQaSWXdlsJRErcAcR"
 
-shortcode = os.getenv("SHORTCODE")
+shortcode = "9514880"
 
-passkey = os.getenv("PASSKEY")
+passkey = "12775367f40cd545f34d5ca77101622bf7c572fb3c6c287fef506ccea269e251"
 
 # =========================
 # DATABASE SETUP
@@ -53,7 +53,7 @@ def generate_access_code(length=8):
 
 def send_cluster_email(to_email, access_code, cluster_points):
     sender = "earlybirdonlinecyber@gmail.com"
-    password = os.getenv("EMAIL_PASSWORD")
+    password = "kbejotxdnppjzbeb"
 
     subject = "Your KUCCPS Cluster Calculation is Ready"
     body = f"""Hello,
@@ -1298,7 +1298,7 @@ def stkpush():
 
             "PhoneNumber": phone,
 
-            "CallBackURL": "https://clusterpointscalculation.co.ke/mpesa_callback",
+            "CallBackURL": "https://kuccps-cluster-system.vercel.app/mpesa_callback",
 
             "AccountReference": "EARLYBIRDTECHSOLUTIONS",
 
