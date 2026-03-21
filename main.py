@@ -52,8 +52,17 @@ def generate_access_code(length=8):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 def send_cluster_email(to_email, access_code, cluster_points):
+    """
+    Sends cluster email safely.
+    Will not crash if email fails, logs error instead.
+    """
     sender = "earlybirdonlinecyber@gmail.com"
     password = "kbejotxdnppjzbeb"
+
+    # Use .get() to avoid KeyError
+    c1 = cluster_points.get("Cluster 1", 0)
+    c2 = cluster_points.get("Cluster 2", 0)
+    c3 = cluster_points.get("Cluster 3", 0)
 
     subject = "Your KUCCPS Cluster Calculation is Ready"
     body = f"""Hello,
@@ -63,9 +72,9 @@ Your KUCCPS cluster calculation is ready.
 Access code: {access_code}
 
 Top cluster points:
-1. Cluster 1: {cluster_points['Cluster 1']}
-2. Cluster 2: {cluster_points['Cluster 2']}
-3. Cluster 3: {cluster_points['Cluster 3']}
+1. Cluster 1: {c1}
+2. Cluster 2: {c2}
+3. Cluster 3: {c3}
 
 Use this code on the home page to open your saved cluster points and continue course selection.
 
@@ -78,13 +87,13 @@ Use this code on the home page to open your saved cluster points and continue co
     msg['To'] = to_email
 
     try:
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
         server.login(sender, password)
         server.sendmail(sender, to_email, msg.as_string())
         server.quit()
-        print("✅ Email sent to", to_email)
+        print(f"✅ Email sent to {to_email}")
     except Exception as e:
-        print("❌ Error sending email:", e)    
+        print(f"❌ Failed to send email to {to_email}: {e}")   
 
 def db():
     conn = sqlite3.connect(DB)
@@ -383,8 +392,11 @@ def calculate():
         "Cluster 3": top3_points[2] if len(top3_points) > 2 else 0
     }
 
-    # ---- send email ----
-    send_cluster_email(email, access_code, cluster_email)
+    # ---- send email safely ----
+    try:
+        send_cluster_email(email, access_code, cluster_email)
+    except Exception as e:
+        print(f"❌ Error sending cluster email (will not crash app): {e}")
 
     # ---- fetch courses added by admin ----
     conn = db()
