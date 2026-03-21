@@ -143,7 +143,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT,
         access_code TEXT,
-        name TEXT,
+        email TEXT,
         best_cluster TEXT,
         top3_points TEXT,
         full_results TEXT
@@ -345,7 +345,7 @@ def calculate():
     conn = db()
     cur = conn.cursor()
 
-    cur.execute("SELECT id FROM calculated_users WHERE name=?", (email,))
+    cur.execute("SELECT id FROM calculated_users WHERE email=?", (email,))
     existing_user = cur.fetchone()
 
     if existing_user:
@@ -359,7 +359,7 @@ def calculate():
     INSERT INTO calculated_users (
         date,
         access_code,
-        name,
+        email,
         best_cluster,
         top3_points,
         full_results
@@ -618,7 +618,7 @@ def download_course_pdf():
     cur = conn.cursor()
 
     # Get course id
-    cur.execute("SELECT id FROM courses WHERE name=?", (course,))
+    cur.execute("SELECT id FROM courses WHERE email=?", (course,))
     row = cur.fetchone()
 
     if not row:
@@ -1245,7 +1245,7 @@ def stkpush():
     cursor = conn.cursor()
 
     # Prevent duplicate emails
-    cursor.execute("SELECT id FROM calculated_users WHERE name=?", (email,))
+    cursor.execute("SELECT id FROM calculated_users WHERE email=?", (email,))
     existing = cursor.fetchone()
 
     if existing:
@@ -1422,7 +1422,7 @@ def check_payment(checkout_id):
         cur.execute("""
             SELECT full_results,access_code
             FROM calculated_users
-            WHERE name=?
+            WHERE email=?
         """,(email,))
 
         user = cur.fetchone()
@@ -1456,7 +1456,7 @@ def fetch_access():
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT access_code FROM calculated_users WHERE name=?",
+        "SELECT access_code FROM calculated_users WHERE email=?",
         (email,)
     )
 
