@@ -841,7 +841,7 @@ def admin_dashboard():
     # Calculated Users
     # -------------------------
     cur.execute("""
-            SELECT id, date, access_code, name, full_results
+            SELECT id, date, access_code, email, full_results
             FROM calculated_users
             ORDER BY id DESC
         """)
