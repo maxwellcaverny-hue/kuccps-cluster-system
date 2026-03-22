@@ -1462,11 +1462,15 @@ def check_payment(checkout_id):
     if status == "success":
 
         results = session.get("pending_results")
-        email = session.get("pending_email")
+        pending_email = session.get("pending_email")
         access_code = session.get("pending_access_code")
         top3_points = session.get("pending_top3")
 
-        if not results or not email:
+        # 🔥 FALLBACK: use email from DB if session lost
+        if not pending_email:
+            pending_email = email
+
+        if not results or not pending_email:
             return jsonify({"status": "error"})
 
         conn = sqlite3.connect("kuccps.db")
@@ -1485,7 +1489,7 @@ def check_payment(checkout_id):
         """, (
             datetime.now(ZoneInfo("Africa/Nairobi")).strftime("%Y-%m-%d %H:%M:%S"),
             access_code,
-            email,
+            pending_email,
             str(max(results.values())),
             json.dumps(top3_points),
             json.dumps(results)
