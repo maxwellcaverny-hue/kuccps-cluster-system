@@ -712,7 +712,9 @@ Delete Selected
 <th>Select</th>
 <th>Date</th>
 <th>Access Code</th>
+<th>Phone</th>
 <th>Email</th>
+<th>Name</th>
 <th>Actions</th>
 </tr>
 </thead>
@@ -734,37 +736,18 @@ onchange="toggleActions()">
 
 <td class="access">{{ user.access_code }}</td>
 
+<td>{{ user.phone }}</td>
+
 <td class="email">{{ user.email }}</td>
 
+<td class="name">{{ user.name }}</td>
 
 <td>
-
-<script>
-  function showClusters(userId) {
-    // Toggle modal
-    const modal = document.getElementById(`cluster-modal-${userId}`);
-    if (modal.style.display === "none") {
-      modal.style.display = "table-row";
-    } else {
-      modal.style.display = "none";
-    }
-
-    // Hide when clicking anywhere outside
-    document.addEventListener('click', function hideOutside(event) {
-      if (!modal.contains(event.target) && event.target.tagName !== 'BUTTON') {
-        modal.style.display = "none";
-        document.removeEventListener('click', hideOutside);
-      }
-    });
-  }
-</script>
-
 <a href="/admin/delete-user/{{ user.id }}">
 <button class="small-btn" style="background:#cc0000;color:white;">
 Delete
 </button>
 </a>
-
 </td>
 
 </tr>
@@ -831,18 +814,19 @@ evt.currentTarget.classList.add("active");
 
 function searchUsers(){
 
-const input=document.getElementById("user-search").value.toLowerCase();
-const rows=document.querySelectorAll("#users-table tbody tr");
+const input = document.getElementById("user-search").value.toLowerCase();
+const rows = document.querySelectorAll("#users-table tbody tr");
 
-rows.forEach(row=>{
+rows.forEach(row => {
 
-const access=row.querySelector(".access").textContent.toLowerCase();
-const name=row.querySelector(".name").textContent.toLowerCase();
+const access = row.querySelector(".access").textContent.toLowerCase();
+const name = row.querySelector(".name").textContent.toLowerCase();
+const phone = row.children[3].textContent.toLowerCase();
 
-if(access.includes(input) || name.includes(input)){
-row.style.display="";
+if(access.includes(input) || name.includes(input) || phone.includes(input)){
+row.style.display = "";
 }else{
-row.style.display="none";
+row.style.display = "none";
 }
 
 });

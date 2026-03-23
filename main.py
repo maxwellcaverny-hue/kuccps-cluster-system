@@ -52,17 +52,8 @@ def generate_access_code(length=8):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 def send_cluster_email(to_email, access_code, cluster_points):
-    """
-    Sends cluster email safely.
-    Will not crash if email fails, logs error instead.
-    """
     sender = "earlybirdonlinecyber@gmail.com"
     password = "kbejotxdnppjzbeb"
-
-    # Use .get() to avoid KeyError
-    c1 = cluster_points.get("Cluster 1", 0)
-    c2 = cluster_points.get("Cluster 2", 0)
-    c3 = cluster_points.get("Cluster 3", 0)
 
     subject = "Your KUCCPS Cluster Calculation is Ready"
     body = f"""Hello,
@@ -72,9 +63,9 @@ Your KUCCPS cluster calculation is ready.
 Access code: {access_code}
 
 Top cluster points:
-1. Cluster 1: {c1}
-2. Cluster 2: {c2}
-3. Cluster 3: {c3}
+1. Cluster 1: {cluster_points['Cluster 1']}
+2. Cluster 2: {cluster_points['Cluster 2']}
+3. Cluster 3: {cluster_points['Cluster 3']}
 
 Use this code on the home page to open your saved cluster points and continue course selection.
 
@@ -87,13 +78,13 @@ Use this code on the home page to open your saved cluster points and continue co
     msg['To'] = to_email
 
     try:
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
         server.login(sender, password)
         server.sendmail(sender, to_email, msg.as_string())
         server.quit()
-        print(f"✅ Email sent to {to_email}")
+        print("✅ Email sent to", to_email)
     except Exception as e:
-        print(f"❌ Failed to send email to {to_email}: {e}")   
+        print("❌ Error sending email:", e)    
 
 def db():
     conn = sqlite3.connect(DB)
@@ -152,7 +143,9 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT,
         access_code TEXT,
+        name TEXT,
         email TEXT,
+        phone TEXT,
         best_cluster TEXT,
         top3_points TEXT,
         full_results TEXT
@@ -263,29 +256,6 @@ def results():
     if "results" not in session:
         return redirect("/")
 
-    if not session.get("payment_initiated"):
-        return redirect("/")    
-
-    # 🔒 BLOCK ACCESS IF NOT PAID
-    access_code = session.get("access_code")
-
-    conn = sqlite3.connect("kuccps.db")
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT p.status
-        FROM payments p
-        JOIN calculated_users c ON p.email = c.email
-        WHERE c.access_code=?
-        ORDER BY p.id DESC LIMIT 1
-    """, (access_code,))
-
-    row = cur.fetchone()
-    conn.close()
-
-    if not row or row[0] != "success":
-        return redirect("/")  # 🚨 BLOCK HERE
-
     # Load courses from DB
     conn = db()
     cur = conn.cursor()
@@ -326,6 +296,14 @@ def results():
 # =========================
 @app.route("/calculate", methods=["POST"])
 def calculate():
+
+    email = request.form.get("email")
+
+    # 🔥 BLOCK UNPAID USERS
+    if not session.get("paid") or session.get("paid_email") != email:
+        return "Payment required", 403
+
+    # continue with your existing calculation logic...
     data = request.form.to_dict()
     print("🔥 DATA RECEIVED:", data)
 
@@ -384,14 +362,42 @@ def calculate():
         conn.close()
         flash("Email already exists. Please use another email or use your access code to reopen results.")
         return redirect("/")
-    conn = db()
-    cur = conn.cursor()
 
-    # DO NOT SAVE YET — WAIT FOR PAYMENT
-    session["pending_results"] = results
-    session["pending_email"] = email
-    session["pending_access_code"] = access_code
-    session["pending_top3"] = top3_points
+    # ✅ ADD THIS HERE (FETCH PHONE)
+    cur.execute("""
+    SELECT phone FROM payments
+    WHERE email=? AND status='success'
+    ORDER BY id DESC LIMIT 1
+    """, (email,))
+
+    payment = cur.fetchone()
+
+    if payment:
+        phone = payment[0]
+    else:
+        phone = None
+
+    cur.execute("""
+    INSERT INTO calculated_users (
+        date,
+        access_code,
+        name,
+        email,
+        phone,
+        full_results
+    )
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        datetime.now(ZoneInfo("Africa/Nairobi")).strftime("%Y-%m-%d %H:%M:%S"),
+        access_code,
+        email,   # name (you can change later)
+        email,
+        phone,
+        json.dumps(results)
+    ))
+
+    conn.commit()
+    conn.close()
 
     # ---- prepare cluster data for email ----
     cluster_email = {
@@ -400,11 +406,8 @@ def calculate():
         "Cluster 3": top3_points[2] if len(top3_points) > 2 else 0
     }
 
-    # ---- send email safely ----
-    try:
-        send_cluster_email(email, access_code, cluster_email)
-    except Exception as e:
-        print(f"❌ Error sending cluster email (will not crash app): {e}")
+    # ---- send email ----
+    send_cluster_email(email, access_code, cluster_email)
 
     # ---- fetch courses added by admin ----
     conn = db()
@@ -430,10 +433,11 @@ def calculate():
 
 
     # ---- store results in session ----
+    session["results"] = results
     session["cluster_email"] = cluster_email
-    
-    # DO NOT GIVE ACCESS YET
-    return redirect("/")  # or payment page
+    session["access_code"] = access_code
+
+    return redirect("/results")
 
 @app.route("/access", methods=["POST"])
 def access_by_code():
@@ -443,46 +447,21 @@ def access_by_code():
 
     conn = db()
     cur = conn.cursor()
-
-    # 🔒 CHECK PAYMENT FIRST
-    cur.execute("""
-        SELECT p.status
-        FROM payments p
-        JOIN calculated_users c ON p.email = c.email
-        WHERE c.access_code=?
-        ORDER BY p.id DESC LIMIT 1
-    """, (code,))
-
+    cur.execute("SELECT full_results FROM calculated_users WHERE access_code=?", (code,))
     row = cur.fetchone()
-
-    if not row or row[0] != "success":
-        conn.close()
-        return "❌ Payment not completed.", 403
-
-    # ✅ THEN FETCH RESULTS
-    cur.execute("""
-        SELECT full_results
-        FROM calculated_users
-        WHERE access_code=?
-    """, (code,))
-
-    row2 = cur.fetchone()
-
-    if not row2:
-        conn.close()
-        return "Results not found", 404
-
-    results = json.loads(row2[0])
-    sorted_results = dict(sorted(results.items(), key=lambda x: int(x[0])))
-
-    # ✅ SET SESSION (YOU MISSED THIS TOO)
-    session["results"] = sorted_results
-    session["access_code"] = code
-    session["payment_initiated"] = True
-
     conn.close()
 
+    if not row:
+        return "❌ Invalid access code.", 400
+
+    results = json.loads(row[0])
+    # Sort clusters numerically
+    sorted_results = dict(sorted(results.items(), key=lambda x: int(x[0])))
+
+    session["results"] = sorted_results
+    session["access_code"] = code
     return redirect("/results")
+
 
 # =========================
 # SUBJECT REQUIREMENT CHECK
@@ -885,20 +864,23 @@ def admin_dashboard():
     # Calculated Users
     # -------------------------
     cur.execute("""
-            SELECT id, date, access_code, email, full_results
-            FROM calculated_users
-            ORDER BY id DESC
-        """)
+        SELECT id, date, access_code, name, email, phone, full_results
+        FROM calculated_users
+        ORDER BY id DESC
+    """)
+
     calculated_users = [
-            dict(
-                id=r[0],
-                date=r[1],
-                access_code=r[2],
-                name=r[3],
-                full_results=r[4]
-            )
-            for r in cur.fetchall()
-        ]
+        dict(
+            id=r[0],
+            date=r[1],
+            access_code=r[2],
+            name=r[3],
+            email=r[4],
+            phone=r[5],
+            full_results=r[6]
+        )
+        for r in cur.fetchall()
+    ]
 
     # -------------------------
     # Admins
@@ -1377,8 +1359,6 @@ def stkpush():
             conn.commit()
             conn.close()
 
-            session["payment_initiated"] = True
-
             return jsonify({
                 "status":"success",
                 "checkout_id": checkout_id
@@ -1460,53 +1440,43 @@ def check_payment(checkout_id):
 
     # PAYMENT SUCCESS
     if status == "success":
+        session["paid"] = True
+        session["paid_email"] = email   # make sure you have email variable
 
-        results = session.get("pending_results")
-        pending_email = session.get("pending_email")
-        access_code = session.get("pending_access_code")
-        top3_points = session.get("pending_top3")
+        return jsonify({
+            "status": "success"
+        })
 
-        # 🔥 FALLBACK: use email from DB if session lost
-        if not pending_email:
-            pending_email = email
-
-        if not results or not pending_email:
-            return jsonify({"status": "error"})
-
+        # load the user's saved results
         conn = sqlite3.connect("kuccps.db")
         cur = conn.cursor()
 
         cur.execute("""
-            INSERT INTO calculated_users (
-                date,
-                access_code,
-                email,
-                best_cluster,
-                top3_points,
-                full_results
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            datetime.now(ZoneInfo("Africa/Nairobi")).strftime("%Y-%m-%d %H:%M:%S"),
-            access_code,
-            pending_email,
-            str(max(results.values())),
-            json.dumps(top3_points),
-            json.dumps(results)
-        ))
+            SELECT full_results,access_code
+            FROM calculated_users
+            WHERE email=?
+        """,(email,))
 
-        conn.commit()
+        user = cur.fetchone()
         conn.close()
 
-        # ✅ now allow access
-        session["results"] = results
-        session["access_code"] = access_code
-        session["payment_initiated"] = True
+        if user:
 
-        return jsonify({
-            "status": "success",
-            "redirect": "/results"
-        })
+            results = json.loads(user[0])
+
+            session["results"] = results
+            session["access_code"] = access_code
+
+            # 🔥 CLEAR PAYMENT AFTER USE
+            session.pop("paid", None)
+            session.pop("paid_email", None)
+
+            return redirect("/results")
+
+            return jsonify({
+                "status":"success",
+                "redirect":"/results"
+            })
 
     return jsonify({"status":status})
 
