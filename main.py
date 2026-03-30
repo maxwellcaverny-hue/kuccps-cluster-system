@@ -466,15 +466,6 @@ def access_by_code():
 # =========================
 # SUBJECT REQUIREMENT CHECK
 # =========================
-GRADE_NORMALIZATION = {
-    "A": "A", "A-": "A-",
-    "B+": "B+", "B": "B", "B-": "B-",
-    "C+": "C+", "C PLUS": "C+", "C +": "C+",
-    "C": "C", "C-": "C-",
-    "D+": "D+", "D": "D", "D-": "D-",
-    "E": "E"
-}
-
 def check_subject_requirements(student_grades, requirements):
     grade_order = {
         "A": 12, "A-": 11, "B+": 10, "B": 9, "B-": 8,
@@ -498,13 +489,9 @@ def check_subject_requirements(student_grades, requirements):
         matched_grade = None
         for subject in options:
             if subject in clean_grades:
-                raw_student = clean_grades[subject].strip().upper()
-                student_grade = GRADE_NORMALIZATION.get(raw_student, raw_student)
 
-                raw_required = required_grade.strip().upper()
-                normalized_required = GRADE_NORMALIZATION.get(raw_required, raw_required)
-
-                if grade_order.get(student_grade, 0) >= grade_order.get(normalized_required, 0):
+                student_grade = clean_grades[subject]
+                if grade_order.get(student_grade, 0) >= grade_order.get(required_grade, 0):
 
                     met = True
                     break
